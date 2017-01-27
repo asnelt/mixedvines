@@ -16,34 +16,65 @@
 This module implements copula-based distributions.
 '''
 from __future__ import division
+from scipy.stats import norm
 import numpy as np
 
 class Copula(object):
     '''
     This class represents a copula.
     '''
-    def __init__(self, family, parameter):
+    def __init__(self, family, theta=None, rotation=None):
         '''
         Constructs a copula of a given family.
         '''
+        families = ['ind', 'gaussian', 'student', 'clayton']
+        if family not in families:
+            raise ValueError("Family '" + family + "' not supported.")
+        if family == 'ind' and theta != None:
+            raise ValueError("Independent copula has no parameter.")
+        rotations = ['90°', '180°', '270°']
+        if rotation and rotation not in rotations:
+            raise ValueError("Rotation '" + rotation + "' not supported.")
         self.family = family
-        self.parameter = parameter
+        self.theta = theta
+        self.rotation = rotation
 
-    def logpdf(self, x):
+    def logpdf(self, u):
+        '''
+        Calculates the log of the probability density function.
+        '''
+        if self.family == 'ind':
+            val = 0.0
+        elif self.family == 'gaussian':
+            x = norm.ppf(u)
+            val = 2 * self.theta * x[:, 0] * x[:, 1] - self.theta**2 * (x[:, 0]**2 + x[:, 1]**2)
+            val /= 2 * (1 - self.theta**2)
+            val -= np.log(1 - self.theta**2) / 2
+        elif self.family == 'student':
+            val = 0 # TODO
+        elif self.family == 'clayton':
+            if self.theta == 0:
+                val = 0.0
+            else:
+                val = np.log(1 + self.theta) \
+                        + (-1 - self.theta) * (np.log(u[:, 0]) + np.log(u[:, 1])) \
+                        + (-1 / self.theta-2) * np.log(u[:, 0]**(-self.theta) + u[:, 1]**(-self.theta) - 1)
+        return val
+
+    def pdf(self, u):
+        '''
+        '''
+        return np.exp(self.logpdf(u))
+
+    def logcdf(self, u):
         '''
         '''
 
-    def pdf(self, x):
+    def cdf(self, u):
         '''
         '''
+        return np.exp(self.logcdf(u))
 
-    def logcdf(self, x):
-        '''
-        '''
-
-    def cdf(self, x):
-        '''
-        '''
     def ccdf(self, x):
         '''
         '''
