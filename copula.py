@@ -16,7 +16,9 @@
 This module implements copula-based distributions.
 '''
 from __future__ import division
-from scipy.stats import norm
+from math import pi
+from scipy.stats import norm, t, multivariate_normal, multivariate_t
+from scipy.special import gammaln
 import numpy as np
 
 class Copula(object):
@@ -51,32 +53,59 @@ class Copula(object):
             val /= 2 * (1 - self.theta**2)
             val -= np.log(1 - self.theta**2) / 2
         elif self.family == 'student':
-            val = 0 # TODO
+            x = t.ppf(u, self.theta[1])
+            fac1 = gammaln(self.theta[1] / 2 + 1)
+            fac2 = -gammaln(self.theta[1] / 2) - np.log(pi) - np.log(self.theta[1]) \
+                    - np.log(1 - self.theta[0]**2) / 2 - np.log(t.pdf(x[:, 0], self.theta(1))) \
+                    - np.log(t.pdf(x[:, 1], self.theta[1]))
+            fac3 = (-(self.theta[1] + 2) / 2) * np.log(1 \
+                    + (x[:, 0]**2 + x[:, 1]**2 - self.theta[0] * x[:, 0] * x[:, 1]) \
+                    / (self.theta[1] * (1 - self.theta[0]**2)))
+            val = fac1 + fac2 + fac3
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = 0.0
             else:
                 val = np.log(1 + self.theta) \
                         + (-1 - self.theta) * (np.log(u[:, 0]) + np.log(u[:, 1])) \
-                        + (-1 / self.theta-2) * np.log(u[:, 0]**(-self.theta) + u[:, 1]**(-self.theta) - 1)
+                        + (-1 / self.theta-2) \
+                        * np.log(u[:, 0]**(-self.theta) + u[:, 1]**(-self.theta) - 1)
         return val
 
     def pdf(self, u):
         '''
+        Calculates the probability density function.
         '''
         return np.exp(self.logpdf(u))
 
     def logcdf(self, u):
         '''
+        Calculates the log of the cumulative distribution function.
         '''
+        if self.family == 'ind':
+            val = np.sum(np.log(u), axis=1)
+        elif self.family == 'gaussian':
+            val = multivariate_normal.logcdf(norm.ppf(u), cov=[[1, self.theta], [self.theta, 1]])
+        elif self.family == 'student':
+            val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
+                    [[1, self.theta[0]], [self.theta[0], 1]], self.theta[1])
+        elif self.family == 'clayton':
+            if self.theta == 0:
+                val = np.sum(np.log(u), axis=1)
+            else:
+                val = (-1 / self.theta) \
+                        * np.log(np.max(u[:, 0]**(-self.theta) + u[:, 1]**(-self.theta) - 1, 0))
+        return val
 
     def cdf(self, u):
         '''
+        Calculates the cumulative distribution function.
         '''
         return np.exp(self.logcdf(u))
 
     def ccdf(self, x):
         '''
+        Calculates the conditional cumulative distribution function.
         '''
 
     def ppcf(self, q):
