@@ -45,6 +45,9 @@ class Copula(object):
         '''
         Calculates the log of the probability density function.
         '''
+        u = np.asarray(u)
+        u[u < 0] = 0
+        u[u > 1] = 1
         if self.family == 'ind':
             val = 0.0
         elif self.family == 'gaussian':
@@ -82,6 +85,9 @@ class Copula(object):
         '''
         Calculates the log of the cumulative distribution function.
         '''
+        u = np.asarray(u)
+        u[u < 0] = 0
+        u[u > 1] = 1
         if self.family == 'ind':
             val = np.sum(np.log(u), axis=1)
         elif self.family == 'gaussian':
@@ -103,14 +109,56 @@ class Copula(object):
         '''
         return np.exp(self.logcdf(u))
 
-    def ccdf(self, x):
+    def ccdf(self, u):
         '''
         Calculates the conditional cumulative distribution function.
         '''
+        u = np.asarray(u)
+        u[u < 0] = 0
+        u[u > 1] = 1
+        if self.family == 'ind':
+            val = u[:, 0]
+        elif self.family == 'gaussian':
+            x = norm.ppf(u)
+            val = norm.cdf((x[:, 0] - self.theta * x[:, 1]) / np.sqrt(1 - self.theta**2))
+        elif self.family == 'student':
+            x = t.ppf(u, self.theta[1])
+            val = t.cdf(np.sqrt((self.theta[1] + 1) / (self.theta[1] + x[:, 1]**2)) \
+                    * (x[:, 0] - self.theta[0] * x[:, 1]) \
+                    / (np.sqrt(1 - self.theta[0]**2)), self.theta[1] + 1)
+        elif self.family == 'clayton':
+            if self.theta == 0:
+                val = u[:, 0]
+            else:
+                val = np.max(u[:, 1]**(-1 - self.theta) \
+                        * (u[:, 0]**(-self.theta) + u[:, 1]**(-self.theta) - 1) \
+                        **(-1 - 1 / self.theta), 0)
+        return val
 
-    def ppcf(self, q):
+    def ppcf(self, u):
         '''
+        Calculates the inverse of the copula conditional cumulative distribution function.
         '''
+        u = np.asarray(u)
+        u[u < 0] = 0
+        u[u > 1] = 1
+        if self.family == 'ind':
+            val = u[:, 0]
+        elif self.family == 'gaussian':
+            x = norm.ppf(u)
+            val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2) + self.theta * x[:, 1])
+        elif self.family == 'student':
+            x = t.ppf(u, self.theta[1])
+            val = t.cdf(np.sqrt(((1 - self.theta[0]**2) * (self.theta[1] + x[:, 1]**2)) / (self.theta[1] + 1)) \
+                    * t.ppf(u[:, 0], self.theta[1] + 1) + self.theta[0] * x[:, 1], self.theta[1])
+        elif self.family == 'clayton':
+            if self.theta == 0:
+                val = u[:, 0]
+            else:
+                val = (1 - u[:, 1]**(-self.theta) \
+                        + (u[:, 0] * (u[:, 1]**(1 + self.theta)))**(-self.theta \
+                        / (1 + self.theta)))**(-1 / self.theta)
+        return val
 
     def fit(self, data):
         '''
