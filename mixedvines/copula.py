@@ -1,14 +1,16 @@
 # Copyright (C) 2017 Arno Onken
 #
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
+# This file is part of the mixedvines package.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
+# The mixedvines package is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# The mixedvines package is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
@@ -17,7 +19,9 @@ This module implements copula-based distributions.
 '''
 from __future__ import division
 from math import pi
-from scipy.stats import norm, t, multivariate_normal, multivariate_t
+from scipy.optimize import minimize
+from scipy.stats import norm, t, uniform, mvn
+# from scipy.stats import multivariate_t
 from scipy.special import gammaln
 import numpy as np
 
@@ -29,17 +33,38 @@ class Copula(object):
         '''
         Constructs a copula of a given family.
         '''
-        families = ['ind', 'gaussian', 'student', 'clayton']
-        if family not in families:
-            raise ValueError("Family '" + family + "' not supported.")
-        if family == 'ind' and theta != None:
-            raise ValueError("Independent copula has no parameter.")
-        rotations = ['90°', '180°', '270°']
-        if rotation and rotation not in rotations:
-            raise ValueError("Rotation '" + rotation + "' not supported.")
+        Copula._check_family(family, rotation)
+        Copula._check_theta(family, theta)
         self.family = family
         self.theta = theta
         self.rotation = rotation
+
+    @staticmethod
+    def _check_family(family, rotation):
+        '''
+        Checks all parameters.
+        '''
+        families = ['ind', 'gaussian', 'student', 'clayton']
+        if family not in families:
+            raise ValueError("Family '" + family + "' not supported.")
+        if rotation:
+            raise NotImplementedError
+        # rotations = ['90°', '180°', '270°']
+        # if rotation and rotation not in rotations:
+        #     raise ValueError("Rotation '" + rotation + "' not supported.")
+
+    @staticmethod
+    def _check_theta(family, theta):
+        if family == 'ind' and theta != None:
+            raise ValueError("Independent copula has no parameter.")
+        if family == 'gaussian' and (len(theta) != 1 or theta < -1 or theta > 1):
+            raise ValueError("For Gaussian family, theta must be a scalar in [-1, 1].")
+        if family == 'student' and (len(theta) != 2 or theta[0] < -1 or theta[0] > 1 \
+                                    or theta[1] <= 0):
+            raise ValueError(("For Student t family, theta[0] must be in [-1, 1]"
+                              " and theta[1] must be positive."))
+        if family == 'clayton' and (len(theta) != 1 or theta < 0):
+            raise ValueError("For Clayton family, theta must be a non-negative scalar.")
 
     def logpdf(self, u):
         '''
@@ -91,10 +116,17 @@ class Copula(object):
         if self.family == 'ind':
             val = np.sum(np.log(u), axis=1)
         elif self.family == 'gaussian':
-            val = multivariate_normal.logcdf(norm.ppf(u), cov=[[1, self.theta], [self.theta, 1]])
+            lower = -[np.inf] * 2
+            upper = norm.ppf(u)
+            limit_flags = np.zeros(2)
+            val = np.zeros((u.shape[0], 1))
+            for i in range(u.shape[0]):
+                val[i] = mvn.mvndst(lower, upper[i, :], limit_flags, self.theta)
+            val = np.log(val)
         elif self.family == 'student':
-            val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
-                    [[1, self.theta[0]], [self.theta[0], 1]], self.theta[1])
+            raise NotImplementedError
+            # val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
+            #         [[1, self.theta[0]], [self.theta[0], 1]], self.theta[1])
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = np.sum(np.log(u), axis=1)
@@ -149,7 +181,8 @@ class Copula(object):
             val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2) + self.theta * x[:, 1])
         elif self.family == 'student':
             x = t.ppf(u, self.theta[1])
-            val = t.cdf(np.sqrt(((1 - self.theta[0]**2) * (self.theta[1] + x[:, 1]**2)) / (self.theta[1] + 1)) \
+            val = t.cdf(np.sqrt(((1 - self.theta[0]**2) * (self.theta[1] + x[:, 1]**2)) \
+                    / (self.theta[1] + 1)) \
                     * t.ppf(u[:, 0], self.theta[1] + 1) + self.theta[0] * x[:, 1], self.theta[1])
         elif self.family == 'clayton':
             if self.theta == 0:
@@ -160,10 +193,45 @@ class Copula(object):
                         / (1 + self.theta)))**(-1 / self.theta)
         return val
 
-    def fit(self, data):
+    def rvs(self, size=1):
         '''
+        Generates random variates from the copula.
         '''
+        samples = np.stack((uniform.rvs(size=size), uniform.rvs(size=size)), axis=1)
+        samples[:, 0] = self.ppcf(samples)
+        return samples
 
-    def rvs():
+    @staticmethod
+    def fit(data, family, rotation=None):
         '''
+        Fits the parameters of the copula to the given data.
         '''
+        data = np.asarray(data)
+        data[data < 0] = 0
+        data[data > 1] = 1
+        Copula._check_family(family, rotation)
+        if family == 'ind':
+            return Copula(family, theta=None, rotation=rotation)
+        elif family == 'gaussian':
+            initial_point = (0.0)
+            bnds = [(-1.0, 1.0)]
+        elif family == 'student':
+            initial_point = (0.0, 1.0)
+            bnds = [(-1.0, 1.0), (1e-1, 1000)]
+        elif family == 'clayton':
+            initial_point = (1.0)
+            bnds = [(1e-3, 20)]
+        # Optimize copula parameters
+        copula = Copula(family, theta=initial_point, rotation=rotation)
+        fun = lambda theta: Copula._theta_cost(theta, data, copula)
+        result = minimize(fun, initial_point, method='TNC', bounds=bnds)
+        copula.theta = result.x
+        return copula
+
+    @staticmethod
+    def _theta_cost(theta, data, copula):
+        '''
+        Helper function for theta optimization
+        '''
+        copula.theta = np.asarray(theta)
+        return -np.sum(copula.logpdf(data))
