@@ -121,12 +121,12 @@ class Copula(object):
         if self.family == 'ind':
             val = np.sum(np.log(u), axis=1)
         elif self.family == 'gaussian':
-            lower = -[np.inf] * 2
+            lower = np.full(2, -np.inf)
             upper = norm.ppf(u)
             limit_flags = np.zeros(2)
-            val = np.zeros((u.shape[0], 1))
-            for i in range(u.shape[0]):
-                val[i] = mvn.mvndst(lower, upper[i, :], limit_flags, self.theta)
+            func1d = lambda upper1d: mvn.mvndst(lower, upper1d, limit_flags, \
+                                                self.theta)
+            val = np.apply_along_axis(func1d, -1, upper)
             val = np.log(val)
         elif self.family == 'student':
             raise NotImplementedError
