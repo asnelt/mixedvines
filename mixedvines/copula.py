@@ -75,7 +75,7 @@ class Copula(object):
         u[u < 0] = 0
         u[u > 1] = 1
         if self.family == 'ind':
-            val = 0.0
+            val = np.zeros(u.shape[0])
         elif self.family == 'gaussian':
             x = norm.ppf(u)
             val = 2 * self.theta * x[:, 0] * x[:, 1] \
@@ -96,7 +96,7 @@ class Copula(object):
             val = fac1 + fac2 + fac3
         elif self.family == 'clayton':
             if self.theta == 0:
-                val = 0.0
+                val = np.zeros(u.shape[0])
             else:
                 val = np.log(1 + self.theta) \
                         + (-1 - self.theta) * (np.log(u[:, 0]) \
@@ -125,7 +125,7 @@ class Copula(object):
             upper = norm.ppf(u)
             limit_flags = np.zeros(2)
             func1d = lambda upper1d: mvn.mvndst(lower, upper1d, limit_flags, \
-                                                self.theta)
+                                                self.theta)[1]
             val = np.apply_along_axis(func1d, -1, upper)
             val = np.log(val)
         elif self.family == 'student':
