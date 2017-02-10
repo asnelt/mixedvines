@@ -170,23 +170,54 @@ class CopulaTestCase(TestCase):
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
-        r_logcdf = np.array([0.0, 0.1520333540, 0.3333333333, 0.5520333540, \
-                             0.8])
-        p_logcdf = c.logcdf(u)
+        r_cdf = np.array([0.0, 0.1520333540, 0.3333333333, 0.5520333540, 0.8])
+        p_cdf = c.cdf(u)
         self.assertAlmostEqual(p_cdf, r_cdf)
 
         # Student t copula family
         c = Copula('student', [0.5, 10])
         # Comparison values obtained from R
-        r_logcdf = np.array([0.0, 0.1528391699, 0.3333333333, 0.5528391699, \
-                             0.8])
-        p_logcdf = c.logcdf(u)
+        r_cdf = np.array([0.0, 0.1528391699, 0.3333333333, 0.5528391699, 0.8])
+        p_cdf = c.cdf(u)
         self.assertAlmostEqual(p_cdf, r_cdf)
 
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
-        r_logcdf = np.array([0.0, 0.2416570262, 0.4366484171, 0.6100768349, \
-                             0.8])
-        p_logcdf = c.logcdf(u)
+        r_cdf = np.array([0.0, 0.2416570262, 0.4366484171, 0.6100768349, 0.8])
+        p_cdf = c.cdf(u)
         self.assertAlmostEqual(p_cdf, r_cdf)
+
+    def test_ccdf(self):
+        '''
+        Tests the conditional cumulative distribution function.
+        '''
+        u = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
+
+        # Independence copula
+        c = Copula('ind')
+        # Comparison values obtained from R
+        r_ccdf = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+        p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
+
+        # Gaussian copula family
+        c = Copula('gaussian', 0.5)
+        # Comparison values obtained from R
+        r_ccdf = np.array([0.0, 0.2889793807, 0.5, 0.7110206193, 1.0])
+        p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
+
+        # Student t copula family
+        c = Copula('student', [0.5, 10])
+        # Comparison values obtained from R
+        r_ccdf = np.array([0.0, 0.2794817821, 0.5, 0.7205182179, 1.0])
+        p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
+
+        # Clayton copula family
+        c = Copula('clayton', 5)
+        # Comparison values obtained from R
+        r_ccdf = np.array([0.0, 0.1083398661, 0.4435793443, 0.6836393756, 1.0])
+        p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
