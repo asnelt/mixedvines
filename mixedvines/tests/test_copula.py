@@ -21,6 +21,7 @@ from unittest import TestCase
 from mixedvines.copula import Copula
 import numpy as np
 
+
 class CopulaTestCase(TestCase):
     '''
     This class represents test cases for the Copula class.
@@ -58,7 +59,7 @@ class CopulaTestCase(TestCase):
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
-        r_logpdf = np.array([-np.inf, 0.2165361255, 0.1438410362, \
+        r_logpdf = np.array([-np.inf, 0.2165361255, 0.1438410362,
                              0.2165361255, -np.inf])
         p_logpdf = c.logpdf(u)
         self.assertAlmostEqual(p_logpdf, r_logpdf)
@@ -66,7 +67,7 @@ class CopulaTestCase(TestCase):
         # Student t copula family
         c = Copula('student', [0.5, 10])
         # Comparison values obtained from R
-        r_logpdf = np.array([-np.inf, 0.2540239468, 0.1937586741, \
+        r_logpdf = np.array([-np.inf, 0.2540239468, 0.1937586741,
                              0.2540239468, -np.inf])
         p_logpdf = c.logpdf(u)
         self.assertAlmostEqual(p_logpdf, r_logpdf)
@@ -74,7 +75,7 @@ class CopulaTestCase(TestCase):
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
-        r_logpdf = np.array([-np.inf, 0.7858645247, 0.9946292379, \
+        r_logpdf = np.array([-np.inf, 0.7858645247, 0.9946292379,
                              0.6666753203, -np.inf])
         p_logpdf = c.logpdf(u)
         self.assertAlmostEqual(p_logpdf, r_logpdf)
@@ -95,25 +96,22 @@ class CopulaTestCase(TestCase):
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
-        r_logpdf = np.array([0.0, 1.2417679440, 1.1547005384, 1.2417679440,
-                             0.0])
-        p_logpdf = c.logpdf(u)
+        r_pdf = np.array([0.0, 1.2417679440, 1.1547005384, 1.2417679440, 0.0])
+        p_pdf = c.pdf(u)
         self.assertAlmostEqual(p_pdf, r_pdf)
 
         # Student t copula family
         c = Copula('student', [0.5, 10])
         # Comparison values obtained from R
-        r_logpdf = np.array([0.0, 1.2892026762, 1.2138033255, 1.2892026762, \
-                             0.0])
-        p_logpdf = c.logpdf(u)
+        r_pdf = np.array([0.0, 1.2892026762, 1.2138033255, 1.2892026762, 0.0])
+        p_pdf = c.pdf(u)
         self.assertAlmostEqual(p_pdf, r_pdf)
 
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
-        r_logpdf = np.array([0.0, 2.1943031503, 2.7037217178, 1.9477508961, \
-                             0.0])
-        p_logpdf = c.logpdf(u)
+        r_pdf = np.array([0.0, 2.1943031503, 2.7037217178, 1.9477508961, 0.0])
+        p_pdf = c.pdf(u)
         self.assertAlmostEqual(p_pdf, r_pdf)
 
     def test_logcdf(self):
@@ -125,7 +123,7 @@ class CopulaTestCase(TestCase):
         # Independence copula
         c = Copula('ind')
         # Comparison values obtained from R
-        r_logcdf = np.array([-np.inf, -2.4361164856, -1.3862943611, \
+        r_logcdf = np.array([-np.inf, -2.4361164856, -1.3862943611,
                              -0.7184649885, -0.2231435513])
         p_logcdf = c.logcdf(u)
         self.assertAlmostEqual(p_logcdf, r_logcdf)
@@ -133,7 +131,7 @@ class CopulaTestCase(TestCase):
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
-        r_logcdf = np.array([-np.inf, -1.8836553477, -1.0986122887, \
+        r_logcdf = np.array([-np.inf, -1.8836553477, -1.0986122887,
                              -0.5941468105, -0.2231435513])
         p_logcdf = c.logcdf(u)
         self.assertAlmostEqual(p_logcdf, r_logcdf)
@@ -141,7 +139,7 @@ class CopulaTestCase(TestCase):
         # Student t copula family
         c = Copula('student', [0.5, 10])
         # Comparison values obtained from R
-        r_logcdf = np.array([-np.inf, -1.8783690879, -1.0986122887, \
+        r_logcdf = np.array([-np.inf, -1.8783690879, -1.0986122887,
                              -0.5926881519, -0.2231435513])
         p_logcdf = c.logcdf(u)
         self.assertAlmostEqual(p_logcdf, r_logcdf)
@@ -149,7 +147,7 @@ class CopulaTestCase(TestCase):
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
-        r_logcdf = np.array([-np.inf, -1.4202358053, -0.8286269453, \
+        r_logcdf = np.array([-np.inf, -1.4202358053, -0.8286269453,
                              -0.4941703709, -0.2231435513])
         p_logcdf = c.logcdf(u)
         self.assertAlmostEqual(p_logcdf, r_logcdf)
@@ -200,12 +198,20 @@ class CopulaTestCase(TestCase):
         r_ccdf = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         p_ccdf = c.ccdf(u)
         self.assertAlmostEqual(p_ccdf, r_ccdf)
+        # Test other axis
+        r_ccdf = np.array([0.2, 0.35, 0.5, 0.65, 0.8])
+        p_ccdf = c.ccdf(u, axis=0)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
         r_ccdf = np.array([0.0, 0.2889793807, 0.5, 0.7110206193, 1.0])
         p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
+        # Test other axis
+        r_ccdf = np.array([1.0, 0.4778649221, 0.5, 0.5221350779, 0.0])
+        p_ccdf = c.ccdf(u, axis=0)
         self.assertAlmostEqual(p_ccdf, r_ccdf)
 
         # Student t copula family
@@ -214,10 +220,21 @@ class CopulaTestCase(TestCase):
         r_ccdf = np.array([0.0, 0.2794817821, 0.5, 0.7205182179, 1.0])
         p_ccdf = c.ccdf(u)
         self.assertAlmostEqual(p_ccdf, r_ccdf)
+        # Test other axis
+        r_ccdf = np.array([0.9590678844, 0.4784831978, 0.5, 0.5215168022,
+                           0.0409321156])
+        p_ccdf = c.ccdf(u, axis=0)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
 
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
-        r_ccdf = np.array([0.0, 0.1083398661, 0.4435793443, 0.6836393756, 1.0])
+        r_ccdf = np.array([0.0, 0.1083398661, 0.4435793443, 0.6836393756,
+                           1.0])
         p_ccdf = c.ccdf(u)
+        self.assertAlmostEqual(p_ccdf, r_ccdf)
+        # Test other axis
+        r_ccdf = np.array([0.0, 0.815748922, 0.4435793443, 0.2896940854,
+                           0.262144])
+        p_ccdf = c.ccdf(u, axis=0)
         self.assertAlmostEqual(p_ccdf, r_ccdf)
