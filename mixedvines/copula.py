@@ -24,6 +24,7 @@ from scipy.stats import norm, t, uniform, mvn
 from scipy.special import gammaln
 import numpy as np
 
+
 class Copula(object):
     '''
     This class represents a copula.
@@ -32,29 +33,28 @@ class Copula(object):
         '''
         Constructs a copula of a given family.
         '''
-        Copula._check_family(family, rotation)
+        Copula._check_family(family)
         Copula._check_theta(family, theta)
+        Copula._check_rotation(rotation)
         self.family = family
         self.theta = theta
         self.rotation = rotation
 
     @staticmethod
-    def _check_family(family, rotation):
+    def _check_family(family):
         '''
-        Checks all parameters.
+        Checks family parameter.
         '''
         families = ['ind', 'gaussian', 'student', 'clayton']
         if family not in families:
             raise ValueError("Family '" + family + "' not supported.")
-        if rotation:
-            raise NotImplementedError
-        # rotations = ['90°', '180°', '270°']
-        # if rotation and rotation not in rotations:
-        #     raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
     def _check_theta(family, theta):
-        if family == 'ind' and theta != None:
+        '''
+        Checks the theta parameter.
+        '''
+        if family == 'ind' and theta is not None:
             raise ValueError("Independent copula has no parameter.")
         if family == 'gaussian' and (theta < -1 or theta > 1):
             raise ValueError("For Gaussian family, 'theta' must be a scalar in"
@@ -66,6 +66,17 @@ class Copula(object):
         if family == 'clayton' and theta < 0:
             raise ValueError("For Clayton family, theta must be a non-negative"
                              " scalar.")
+
+    @staticmethod
+    def _check_rotation(rotation):
+        '''
+        Checks rotation parameter.
+        '''
+        if rotation:
+            raise NotImplementedError
+        # rotations = ['90°', '180°', '270°']
+        # if rotation and rotation not in rotations:
+        #     raise ValueError("Rotation '" + rotation + "' not supported.")
 
     def logpdf(self, u):
         '''
@@ -79,30 +90,35 @@ class Copula(object):
         elif self.family == 'gaussian':
             x = norm.ppf(u)
             val = 2 * self.theta * x[:, 0] * x[:, 1] \
-                    - self.theta**2 * (x[:, 0]**2 + x[:, 1]**2)
+                - self.theta**2 * (x[:, 0]**2 + x[:, 1]**2)
             val /= 2 * (1 - self.theta**2)
             val -= np.log(1 - self.theta**2) / 2
+            val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] = -np.inf
         elif self.family == 'student':
             x = t.ppf(u, self.theta[1])
             fac1 = gammaln(self.theta[1] / 2 + 1)
             fac2 = -gammaln(self.theta[1] / 2) - np.log(np.pi) \
-                    - np.log(self.theta[1]) - np.log(1 - self.theta[0]**2) \
-                    / 2 - np.log(t.pdf(x[:, 0], self.theta(1))) \
-                    - np.log(t.pdf(x[:, 1], self.theta[1]))
+                - np.log(self.theta[1]) - np.log(1 - self.theta[0]**2) \
+                / 2 - np.log(t.pdf(x[:, 0], self.theta[1])) \
+                - np.log(t.pdf(x[:, 1], self.theta[1]))
             fac3 = (-(self.theta[1] + 2) / 2) \
-                    * np.log(1 + (x[:, 0]**2 + x[:, 1]**2 \
-                                  - self.theta[0] * x[:, 0] * x[:, 1]) \
-                                 / (self.theta[1] * (1 - self.theta[0]**2)))
+                * np.log(1 + (x[:, 0]**2 + x[:, 1]**2
+                              - self.theta[0] * x[:, 0] * x[:, 1])
+                         / (self.theta[1] * (1 - self.theta[0]**2)))
             val = fac1 + fac2 + fac3
+            val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] = -np.inf
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = np.zeros(u.shape[0])
             else:
                 val = np.log(1 + self.theta) \
-                        + (-1 - self.theta) * (np.log(u[:, 0]) \
-                        + np.log(u[:, 1])) + (-1 / self.theta-2) \
-                        * np.log(u[:, 0]**(-self.theta) \
-                                 + u[:, 1]**(-self.theta) - 1)
+                    + (-1 - self.theta) \
+                    * (np.log(u[:, 0]) + np.log(u[:, 1])) \
+                    + (-1 / self.theta-2) * np.log(u[:, 0]**(-self.theta)
+                                                   + u[:, 1]**(-self.theta)
+                                                   - 1)
+                val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] \
+                    = -np.inf
         return val
 
     def pdf(self, u):
@@ -119,15 +135,24 @@ class Copula(object):
         u[u < 0] = 0
         u[u > 1] = 1
         if self.family == 'ind':
+            np.seterr(divide='ignore')
             val = np.sum(np.log(u), axis=1)
+            np.seterr(divide='warn')
         elif self.family == 'gaussian':
             lower = np.full(2, -np.inf)
             upper = norm.ppf(u)
             limit_flags = np.zeros(2)
-            func1d = lambda upper1d: mvn.mvndst(lower, upper1d, limit_flags, \
-                                                self.theta)[1]
+
+            def func1d(upper1d):
+                '''
+                Calculates the multivariate normal cumulative distribution
+                function of a single sample.
+                '''
+                return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
             val = np.apply_along_axis(func1d, -1, upper)
             val = np.log(val)
+            val[np.any(u == 0.0, axis=1)] = -np.inf
+            val[u[:, 0] == 1.0] = np.log(u[u[:, 0] == 1.0, 1])
         elif self.family == 'student':
             raise NotImplementedError
             # val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
@@ -137,8 +162,8 @@ class Copula(object):
                 val = np.sum(np.log(u), axis=1)
             else:
                 val = (-1 / self.theta) \
-                        * np.log(np.max(u[:, 0]**(-self.theta) \
-                                        + u[:, 1]**(-self.theta) - 1, 0))
+                        * np.log(np.maximum(u[:, 0]**(-self.theta)
+                                            + u[:, 1]**(-self.theta) - 1, 0))
         return val
 
     def cdf(self, u):
@@ -147,10 +172,12 @@ class Copula(object):
         '''
         return np.exp(self.logcdf(u))
 
-    def ccdf(self, u):
+    def ccdf(self, u, axis=1):
         '''
         Calculates the conditional cumulative distribution function.
         '''
+        if axis != 1:
+            raise NotImplementedError
         u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
@@ -158,29 +185,31 @@ class Copula(object):
             val = u[:, 0]
         elif self.family == 'gaussian':
             x = norm.ppf(u)
-            val = norm.cdf((x[:, 0] - self.theta * x[:, 1]) \
+            val = norm.cdf((x[:, 0] - self.theta * x[:, 1])
                            / np.sqrt(1 - self.theta**2))
         elif self.family == 'student':
             x = t.ppf(u, self.theta[1])
-            val = t.cdf(np.sqrt((self.theta[1] + 1) \
-                                / (self.theta[1] + x[:, 1]**2)) \
-                        * (x[:, 0] - self.theta[0] * x[:, 1]) \
-                          / (np.sqrt(1 - self.theta[0]**2)), self.theta[1] + 1)
+            val = t.cdf(np.sqrt((self.theta[1] + 1)
+                                / (self.theta[1] + x[:, 1]**2))
+                        * (x[:, 0] - self.theta[0] * x[:, 1])
+                        / (np.sqrt(1 - self.theta[0]**2)), self.theta[1] + 1)
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = u[:, 0]
             else:
-                val = np.max(u[:, 1]**(-1 - self.theta) \
-                             * (u[:, 0]**(-self.theta) \
-                                + u[:, 1]**(-self.theta) - 1) \
-                               **(-1 - 1 / self.theta), 0)
+                val = np.max(u[:, 1]**(-1 - self.theta)
+                             * (u[:, 0]**(-self.theta)
+                                + u[:, 1]**(-self.theta) - 1)
+                             ** (-1 - 1 / self.theta), 0)
         return val
 
-    def ppcf(self, u):
+    def ppcf(self, u, axis=1):
         '''
-        Calculates the inverse of the copula conditional cumulative distribution
-        function.
+        Calculates the inverse of the copula conditional cumulative
+        distribution function.
         '''
+        if axis != 1:
+            raise NotImplementedError
         u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
@@ -188,29 +217,29 @@ class Copula(object):
             val = u[:, 0]
         elif self.family == 'gaussian':
             x = norm.ppf(u)
-            val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2) \
+            val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2)
                            + self.theta * x[:, 1])
         elif self.family == 'student':
             x = t.ppf(u, self.theta[1])
-            val = t.cdf(np.sqrt(((1 - self.theta[0]**2) \
-                                 * (self.theta[1] + x[:, 1]**2)) \
-                                / (self.theta[1] + 1)) \
-                        * t.ppf(u[:, 0], self.theta[1] + 1) \
+            val = t.cdf(np.sqrt(((1 - self.theta[0]**2)
+                                 * (self.theta[1] + x[:, 1]**2))
+                                / (self.theta[1] + 1))
+                        * t.ppf(u[:, 0], self.theta[1] + 1)
                         + self.theta[0] * x[:, 1], self.theta[1])
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = u[:, 0]
             else:
-                val = (1 - u[:, 1]**(-self.theta) \
-                       + (u[:, 0] * (u[:, 1]**(1 + self.theta))) \
-                         **(-self.theta / (1 + self.theta)))**(-1 / self.theta)
+                val = (1 - u[:, 1]**(-self.theta)
+                       + (u[:, 0] * (u[:, 1]**(1 + self.theta)))
+                       ** (-self.theta / (1 + self.theta)))**(-1 / self.theta)
         return val
 
     def rvs(self, size=1):
         '''
         Generates random variates from the copula.
         '''
-        samples = np.stack((uniform.rvs(size=size), uniform.rvs(size=size)), \
+        samples = np.stack((uniform.rvs(size=size), uniform.rvs(size=size)),
                            axis=1)
         samples[:, 0] = self.ppcf(samples)
         return samples
@@ -223,7 +252,8 @@ class Copula(object):
         samples = np.asarray(samples)
         samples[samples < 0] = 0
         samples[samples > 1] = 1
-        Copula._check_family(family, rotation)
+        Copula._check_family(family)
+        Copula._check_rotation(rotation)
         if family == 'ind':
             return Copula(family, theta=None, rotation=rotation)
         elif family == 'gaussian':
@@ -237,7 +267,12 @@ class Copula(object):
             bnds = [(1e-3, 20)]
         # Optimize copula parameters
         copula = Copula(family, theta=initial_point, rotation=rotation)
-        fun = lambda theta: Copula._theta_cost(theta, samples, copula)
+
+        def fun(theta):
+            '''
+            Calculates the cost of a given theta parameter.
+            '''
+            return Copula._theta_cost(theta, samples, copula)
         result = minimize(fun, initial_point, method='TNC', bounds=bnds)
         copula.theta = result.x
         return copula
