@@ -20,7 +20,6 @@ This module implements copula distributions.
 from __future__ import division
 from scipy.optimize import minimize
 from scipy.stats import norm, t, uniform, mvn
-# from scipy.stats import multivariate_t
 from scipy.special import gammaln
 import numpy as np
 
@@ -85,40 +84,44 @@ class Copula(object):
         u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
+        inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
+        outer = np.invert(inner)
         if self.family == 'ind':
             val = np.zeros(u.shape[0])
         elif self.family == 'gaussian':
+            val = np.zeros(u.shape[0])
             x = norm.ppf(u)
-            val = 2 * self.theta * x[:, 0] * x[:, 1] \
-                - self.theta**2 * (x[:, 0]**2 + x[:, 1]**2)
-            val /= 2 * (1 - self.theta**2)
-            val -= np.log(1 - self.theta**2) / 2
-            val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] = -np.inf
+            val[inner] = 2 * self.theta * x[inner, 0] * x[inner, 1] \
+                - self.theta**2 * (x[inner, 0]**2 + x[inner, 1]**2)
+            val[inner] /= 2 * (1 - self.theta**2)
+            val[inner] -= np.log(1 - self.theta**2) / 2
+            val[outer] = -np.inf
         elif self.family == 'student':
+            val = np.zeros(u.shape[0])
             x = t.ppf(u, self.theta[1])
             fac1 = gammaln(self.theta[1] / 2 + 1)
             fac2 = -gammaln(self.theta[1] / 2) - np.log(np.pi) \
                 - np.log(self.theta[1]) - np.log(1 - self.theta[0]**2) \
-                / 2 - np.log(t.pdf(x[:, 0], self.theta[1])) \
-                - np.log(t.pdf(x[:, 1], self.theta[1]))
+                / 2 - np.log(t.pdf(x[inner, 0], self.theta[1])) \
+                - np.log(t.pdf(x[inner, 1], self.theta[1]))
             fac3 = (-(self.theta[1] + 2) / 2) \
-                * np.log(1 + (x[:, 0]**2 + x[:, 1]**2
-                              - self.theta[0] * x[:, 0] * x[:, 1])
+                * np.log(1 + (x[inner, 0]**2 + x[inner, 1]**2
+                              - self.theta[0] * x[inner, 0] * x[inner, 1])
                          / (self.theta[1] * (1 - self.theta[0]**2)))
-            val = fac1 + fac2 + fac3
-            val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] = -np.inf
+            val[inner] = fac1 + fac2 + fac3
+            val[outer] = -np.inf
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = np.zeros(u.shape[0])
             else:
-                val = np.log(1 + self.theta) \
+                val = np.zeros(u.shape[0])
+                val[inner] = np.log(1 + self.theta) \
                     + (-1 - self.theta) \
-                    * (np.log(u[:, 0]) + np.log(u[:, 1])) \
-                    + (-1 / self.theta-2) * np.log(u[:, 0]**(-self.theta)
-                                                   + u[:, 1]**(-self.theta)
+                    * (np.log(u[inner, 0]) + np.log(u[inner, 1])) \
+                    + (-1 / self.theta-2) * np.log(u[inner, 0]**(-self.theta)
+                                                   + u[inner, 1]**(-self.theta)
                                                    - 1)
-                val[np.any(np.bitwise_or(u == 0.0, u == 1.0), axis=1)] \
-                    = -np.inf
+                val[outer] = -np.inf
         return val
 
     def pdf(self, u):
@@ -153,6 +156,7 @@ class Copula(object):
             val = np.log(val)
             val[np.any(u == 0.0, axis=1)] = -np.inf
             val[u[:, 0] == 1.0] = np.log(u[u[:, 0] == 1.0, 1])
+            val[u[:, 1] == 1.0] = np.log(u[u[:, 1] == 1.0, 0])
         elif self.family == 'student':
             raise NotImplementedError
             # val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
@@ -161,9 +165,11 @@ class Copula(object):
             if self.theta == 0:
                 val = np.sum(np.log(u), axis=1)
             else:
+                np.seterr(divide='ignore')
                 val = (-1 / self.theta) \
-                        * np.log(np.maximum(u[:, 0]**(-self.theta)
-                                            + u[:, 1]**(-self.theta) - 1, 0))
+                    * np.log(np.maximum(u[:, 0]**(-self.theta)
+                                        + u[:, 1]**(-self.theta) - 1, 0))
+                np.seterr(divide='warn')
         return val
 
     def cdf(self, u):
@@ -176,64 +182,102 @@ class Copula(object):
         '''
         Calculates the conditional cumulative distribution function.
         '''
-        if axis != 1:
-            raise NotImplementedError
         u = np.asarray(u)
-        u[u < 0] = 0
-        u[u > 1] = 1
-        if self.family == 'ind':
-            val = u[:, 0]
-        elif self.family == 'gaussian':
-            x = norm.ppf(u)
-            val = norm.cdf((x[:, 0] - self.theta * x[:, 1])
-                           / np.sqrt(1 - self.theta**2))
-        elif self.family == 'student':
-            x = t.ppf(u, self.theta[1])
-            val = t.cdf(np.sqrt((self.theta[1] + 1)
-                                / (self.theta[1] + x[:, 1]**2))
-                        * (x[:, 0] - self.theta[0] * x[:, 1])
-                        / (np.sqrt(1 - self.theta[0]**2)), self.theta[1] + 1)
-        elif self.family == 'clayton':
-            if self.theta == 0:
+        if axis == 0:
+            # Temporarily change rotation
+            rotation = self.rotation
+            if self.rotation == '90°':
+                self.rotation = '270°'
+            elif self.rotation == '270°':
+                self.rotation = '90°'
+            val = self.ccdf(u[:, [1, 0]], axis=1)
+            # Recover original rotation
+            self.rotation = rotation
+            return val
+        elif axis == 1:
+            u[u < 0] = 0
+            u[u > 1] = 1
+            if self.family == 'ind':
                 val = u[:, 0]
-            else:
-                val = np.max(u[:, 1]**(-1 - self.theta)
-                             * (u[:, 0]**(-self.theta)
-                                + u[:, 1]**(-self.theta) - 1)
-                             ** (-1 - 1 / self.theta), 0)
-        return val
+            elif self.family == 'gaussian':
+                x = norm.ppf(u)
+                val = norm.cdf((x[:, 0] - self.theta * x[:, 1])
+                               / np.sqrt(1 - self.theta**2))
+            elif self.family == 'student':
+                val = np.zeros(u.shape[0])
+                x = t.ppf(u, self.theta[1])
+                inner = np.bitwise_and(u[:, 1] != 0.0, u[:, 1] != 1.0)
+                val[inner] \
+                    = t.cdf(np.sqrt((self.theta[1] + 1)
+                                    / (self.theta[1] + x[inner, 1]**2))
+                            * (x[inner, 0] - self.theta[0] * x[inner, 1])
+                            / (np.sqrt(1 - self.theta[0]**2)),
+                            self.theta[1] + 1)
+                val[u[:, 1] == 0.0] = t.cdf(np.sqrt((self.theta[1] + 1)
+                                                    / (1 - self.theta[0]**2))
+                                            * self.theta[0], self.theta[1] + 1)
+                val[u[:, 1] == 1.0] = t.cdf(-np.sqrt((self.theta[1] + 1)
+                                                     / (1 - self.theta[0]**2))
+                                            * self.theta[0], self.theta[1] + 1)
+            elif self.family == 'clayton':
+                if self.theta == 0:
+                    val = u[:, 0]
+                else:
+                    val = np.zeros(u.shape[0])
+                    gtz = np.all(u > 0.0, axis=1)
+                    val[gtz] = np.maximum(u[gtz, 1]**(-1 - self.theta)
+                                          * (u[gtz, 0]**(-self.theta)
+                                             + u[gtz, 1]**(-self.theta) - 1)
+                                          ** (-1 - 1 / self.theta), 0)
+                    val[np.invert(gtz)] = 0
+            return val
+        else:
+            raise ValueError("axis must be in [0, 1].")
 
     def ppcf(self, u, axis=1):
         '''
         Calculates the inverse of the copula conditional cumulative
         distribution function.
         '''
-        if axis != 1:
-            raise NotImplementedError
         u = np.asarray(u)
-        u[u < 0] = 0
-        u[u > 1] = 1
-        if self.family == 'ind':
-            val = u[:, 0]
-        elif self.family == 'gaussian':
-            x = norm.ppf(u)
-            val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2)
-                           + self.theta * x[:, 1])
-        elif self.family == 'student':
-            x = t.ppf(u, self.theta[1])
-            val = t.cdf(np.sqrt(((1 - self.theta[0]**2)
-                                 * (self.theta[1] + x[:, 1]**2))
-                                / (self.theta[1] + 1))
-                        * t.ppf(u[:, 0], self.theta[1] + 1)
-                        + self.theta[0] * x[:, 1], self.theta[1])
-        elif self.family == 'clayton':
-            if self.theta == 0:
+        if axis == 0:
+            # Temporarily change rotation
+            rotation = self.rotation
+            if self.rotation == '90°':
+                self.rotation = '270°'
+            elif self.rotation == '270°':
+                self.rotation = '90°'
+            val = self.ppcf(u[:, [1, 0]], axis=1)
+            # Recover original rotation
+            self.rotation = rotation
+            return val
+        elif axis == 1:
+            u[u < 0] = 0
+            u[u > 1] = 1
+            if self.family == 'ind':
                 val = u[:, 0]
-            else:
-                val = (1 - u[:, 1]**(-self.theta)
-                       + (u[:, 0] * (u[:, 1]**(1 + self.theta)))
-                       ** (-self.theta / (1 + self.theta)))**(-1 / self.theta)
-        return val
+            elif self.family == 'gaussian':
+                x = norm.ppf(u)
+                val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2)
+                               + self.theta * x[:, 1])
+            elif self.family == 'student':
+                x = t.ppf(u, self.theta[1])
+                val = t.cdf(np.sqrt(((1 - self.theta[0]**2)
+                                     * (self.theta[1] + x[:, 1]**2))
+                                    / (self.theta[1] + 1))
+                            * t.ppf(u[:, 0], self.theta[1] + 1)
+                            + self.theta[0] * x[:, 1], self.theta[1])
+            elif self.family == 'clayton':
+                if self.theta == 0:
+                    val = u[:, 0]
+                else:
+                    val = (1 - u[:, 1]**(-self.theta)
+                           + (u[:, 0] * (u[:, 1]**(1 + self.theta)))
+                           ** (-self.theta / (1 + self.theta))) \
+                          ** (-1 / self.theta)
+            return val
+        else:
+            raise ValueError("axis must be in [0, 1].")
 
     def rvs(self, size=1):
         '''
@@ -280,7 +324,7 @@ class Copula(object):
     @staticmethod
     def _theta_cost(theta, samples, copula):
         '''
-        Helper function for theta optimization
+        Helper function for theta optimization.
         '''
         copula.theta = np.asarray(theta)
         return -np.sum(copula.logpdf(samples))
