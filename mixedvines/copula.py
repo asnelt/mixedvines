@@ -84,6 +84,12 @@ class Copula(object):
         u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
+        if self.rotation == '90°':
+            u[:, 1] = 1 - u[:, 1]
+        elif self.rotation == '180°':
+            u = 1 - u
+        elif self.rotation == '270°':
+            u[:, 0] = 1 - u[:, 0]
         inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
         outer = np.invert(inner)
         if self.family == 'ind':
