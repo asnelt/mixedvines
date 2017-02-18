@@ -143,6 +143,12 @@ class Copula(object):
         u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
+        if self.rotation == '90°':
+            u[:, 1] = 1 - u[:, 1]
+        elif self.rotation == '180°':
+            u = 1 - u
+        elif self.rotation == '270°':
+            u[:, 0] = 1 - u[:, 0]
         if self.family == 'ind':
             np.seterr(divide='ignore')
             val = np.sum(np.log(u), axis=1)
@@ -158,6 +164,7 @@ class Copula(object):
                 function of a single sample.
                 '''
                 return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
+
             val = np.apply_along_axis(func1d, -1, upper)
             val = np.log(val)
             val[np.any(u == 0.0, axis=1)] = -np.inf
@@ -176,6 +183,12 @@ class Copula(object):
                     * np.log(np.maximum(u[:, 0]**(-self.theta)
                                         + u[:, 1]**(-self.theta) - 1, 0))
                 np.seterr(divide='warn')
+        if self.rotation == '90°':
+            val = u[:, 0] - val
+        elif self.rotation == '180°':
+            val = u[:, 0] + u[:, 1] - 1.0 + val
+        elif self.rotation == '270°':
+            val = u[:, 1] - val
         return val
 
     def cdf(self, u):
