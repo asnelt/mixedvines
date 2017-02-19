@@ -71,11 +71,9 @@ class Copula(object):
         '''
         Checks rotation parameter.
         '''
-        if rotation:
-            raise NotImplementedError
-        # rotations = ['90°', '180°', '270°']
-        # if rotation and rotation not in rotations:
-        #     raise ValueError("Rotation '" + rotation + "' not supported.")
+        rotations = ['90°', '180°', '270°']
+        if rotation and rotation not in rotations:
+            raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
     def _crop_input(u):
@@ -87,17 +85,24 @@ class Copula(object):
         u[u > 1] = 1
         return u
 
-    def logpdf(self, u):
+    def _rotate_input(self, u):
         '''
-        Calculates the log of the probability density function.
+        Preprocesses the input to account for the copula rotation.
         '''
-        u = Copula._crop_input(u)
         if self.rotation == '90°':
             u[:, 1] = 1 - u[:, 1]
         elif self.rotation == '180°':
             u = 1 - u
         elif self.rotation == '270°':
             u[:, 0] = 1 - u[:, 0]
+        return u
+
+    def logpdf(self, u):
+        '''
+        Calculates the log of the probability density function.
+        '''
+        u = Copula._crop_input(u)
+        u = self._rotate_input(u)
         inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
         outer = np.invert(inner)
         if self.family == 'ind':
@@ -149,12 +154,7 @@ class Copula(object):
         Calculates the log of the cumulative distribution function.
         '''
         u = Copula._crop_input(u)
-        if self.rotation == '90°':
-            u[:, 1] = 1 - u[:, 1]
-        elif self.rotation == '180°':
-            u = 1 - u
-        elif self.rotation == '270°':
-            u[:, 0] = 1 - u[:, 0]
+        u = self._rotate_input(u)
         if self.family == 'ind':
             np.seterr(divide='ignore')
             val = np.sum(np.log(u), axis=1)
@@ -220,6 +220,7 @@ class Copula(object):
             self.rotation = rotation
             return val
         elif axis == 1:
+            u = self._rotate_input(u)
             if self.family == 'ind':
                 val = u[:, 0]
             elif self.family == 'gaussian':
@@ -253,6 +254,8 @@ class Copula(object):
                                              + u[gtz, 1]**(-self.theta) - 1)
                                           ** (-1 - 1 / self.theta), 0)
                     val[np.invert(gtz)] = 0
+            if self.rotation == '180°' or self.rotation == '270°':
+                val = 1.0 - val
             return val
         else:
             raise ValueError("axis must be in [0, 1].")
@@ -275,6 +278,7 @@ class Copula(object):
             self.rotation = rotation
             return val
         elif axis == 1:
+            u = self._rotate_input(u)
             if self.family == 'ind':
                 val = u[:, 0]
             elif self.family == 'gaussian':
@@ -296,6 +300,8 @@ class Copula(object):
                            + (u[:, 0] * (u[:, 1]**(1 + self.theta)))
                            ** (-self.theta / (1 + self.theta))) \
                           ** (-1 / self.theta)
+            if self.rotation == '180°' or self.rotation == '270°':
+                val = 1.0 - val
             return val
         else:
             raise ValueError("axis must be in [0, 1].")
