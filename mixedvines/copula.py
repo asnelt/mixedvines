@@ -80,10 +80,8 @@ class Copula(object):
         '''
         Crops the input to the unit hypercube.
         '''
-        u = np.asarray(u)
         u[u < 0] = 0
         u[u > 1] = 1
-        return u
 
     def _rotate_input(self, u):
         '''
@@ -95,14 +93,14 @@ class Copula(object):
             u = 1 - u
         elif self.rotation == '270°':
             u[:, 0] = 1 - u[:, 0]
-        return u
 
     def logpdf(self, u):
         '''
         Calculates the log of the probability density function.
         '''
-        u = Copula._crop_input(u)
-        u = self._rotate_input(u)
+        u = np.copy(np.asarray(u))
+        Copula._crop_input(u)
+        self._rotate_input(u)
         inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
         outer = np.invert(inner)
         if self.family == 'ind':
@@ -153,8 +151,9 @@ class Copula(object):
         '''
         Calculates the log of the cumulative distribution function.
         '''
-        u = Copula._crop_input(u)
-        u = self._rotate_input(u)
+        u = np.copy(np.asarray(u))
+        Copula._crop_input(u)
+        self._rotate_input(u)
         if self.family == 'ind':
             np.seterr(divide='ignore')
             val = np.sum(np.log(u), axis=1)
@@ -207,7 +206,8 @@ class Copula(object):
         '''
         Calculates the conditional cumulative distribution function.
         '''
-        u = Copula._crop_input(u)
+        u = np.copy(np.asarray(u))
+        Copula._crop_input(u)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -220,7 +220,7 @@ class Copula(object):
             self.rotation = rotation
             return val
         elif axis == 1:
-            u = self._rotate_input(u)
+            self._rotate_input(u)
             if self.family == 'ind':
                 val = u[:, 0]
             elif self.family == 'gaussian':
@@ -265,7 +265,8 @@ class Copula(object):
         Calculates the inverse of the copula conditional cumulative
         distribution function.
         '''
-        u = Copula._crop_input(u)
+        u = np.copy(np.asarray(u))
+        Copula._crop_input(u)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -278,7 +279,7 @@ class Copula(object):
             self.rotation = rotation
             return val
         elif axis == 1:
-            u = self._rotate_input(u)
+            self._rotate_input(u)
             if self.family == 'ind':
                 val = u[:, 0]
             elif self.family == 'gaussian':
@@ -322,7 +323,6 @@ class Copula(object):
         '''
         Copula._check_family(family)
         Copula._check_rotation(rotation)
-        samples = Copula._crop_input(samples)
         if family == 'ind':
             return Copula(family, theta=None, rotation=rotation)
         elif family == 'gaussian':
