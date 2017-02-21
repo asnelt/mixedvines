@@ -90,7 +90,7 @@ class Copula(object):
         if self.rotation == '90°':
             u[:, 1] = 1 - u[:, 1]
         elif self.rotation == '180°':
-            u = 1 - u
+            u[:, :] = 1 - u[:, :]
         elif self.rotation == '270°':
             u[:, 0] = 1 - u[:, 0]
 
@@ -190,11 +190,17 @@ class Copula(object):
                 np.seterr(**old_settings)
         # Transform according to rotation, but take _rotate_input into account
         if self.rotation == '90°':
+            old_settings = np.seterr(divide='ignore')
             val = np.log(u[:, 0] - np.exp(val))
+            np.seterr(**old_settings)
         elif self.rotation == '180°':
+            old_settings = np.seterr(divide='ignore')
             val = np.log((1 - u[:, 0]) + (1 - u[:, 1]) - 1.0 + np.exp(val))
+            np.seterr(**old_settings)
         elif self.rotation == '270°':
+            old_settings = np.seterr(divide='ignore')
             val = np.log(u[:, 1] - np.exp(val))
+            np.seterr(**old_settings)
         return val
 
     def cdf(self, u):
