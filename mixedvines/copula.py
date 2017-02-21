@@ -99,7 +99,7 @@ class Copula(object):
         Calculates the log of the probability density function.
         '''
         u = np.copy(np.asarray(u))
-        Copula._crop_input(u)
+        self._crop_input(u)
         self._rotate_input(u)
         inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
         outer = np.invert(inner)
@@ -152,7 +152,7 @@ class Copula(object):
         Calculates the log of the cumulative distribution function.
         '''
         u = np.copy(np.asarray(u))
-        Copula._crop_input(u)
+        self._crop_input(u)
         self._rotate_input(u)
         if self.family == 'ind':
             np.seterr(divide='ignore')
@@ -207,7 +207,7 @@ class Copula(object):
         Calculates the conditional cumulative distribution function.
         '''
         u = np.copy(np.asarray(u))
-        Copula._crop_input(u)
+        self._crop_input(u)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -253,7 +253,6 @@ class Copula(object):
                                           * (u[gtz, 0]**(-self.theta)
                                              + u[gtz, 1]**(-self.theta) - 1)
                                           ** (-1 - 1 / self.theta), 0)
-                    val[np.invert(gtz)] = 0
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
@@ -266,7 +265,7 @@ class Copula(object):
         distribution function.
         '''
         u = np.copy(np.asarray(u))
-        Copula._crop_input(u)
+        self._crop_input(u)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -297,10 +296,12 @@ class Copula(object):
                 if self.theta == 0:
                     val = u[:, 0]
                 else:
-                    val = (1 - u[:, 1]**(-self.theta)
-                           + (u[:, 0] * (u[:, 1]**(1 + self.theta)))
-                           ** (-self.theta / (1 + self.theta))) \
-                          ** (-1 / self.theta)
+                    val = np.zeros(u.shape[0])
+                    gtz = np.all(u > 0.0, axis=1)
+                    val[gtz] = (1 - u[gtz, 1]**(-self.theta)
+                                + (u[gtz, 0] * (u[gtz, 1]**(1 + self.theta)))
+                                ** (-self.theta / (1 + self.theta))) \
+                        ** (-1 / self.theta)
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
