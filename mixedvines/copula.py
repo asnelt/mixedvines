@@ -155,9 +155,9 @@ class Copula(object):
         self._crop_input(u)
         self._rotate_input(u)
         if self.family == 'ind':
-            np.seterr(divide='ignore')
+            old_settings = np.seterr(divide='ignore')
             val = np.sum(np.log(u), axis=1)
-            np.seterr(divide='warn')
+            np.seterr(**old_settings)
         elif self.family == 'gaussian':
             lower = np.full(2, -np.inf)
             upper = norm.ppf(u)
@@ -183,17 +183,18 @@ class Copula(object):
             if self.theta == 0:
                 val = np.sum(np.log(u), axis=1)
             else:
-                np.seterr(divide='ignore')
+                old_settings = np.seterr(divide='ignore')
                 val = (-1 / self.theta) \
                     * np.log(np.maximum(u[:, 0]**(-self.theta)
                                         + u[:, 1]**(-self.theta) - 1, 0))
-                np.seterr(divide='warn')
+                np.seterr(**old_settings)
+        # Transform according to rotation, but take _rotate_input into account
         if self.rotation == '90°':
-            val = u[:, 0] - val
+            val = np.log(u[:, 0] - np.exp(val))
         elif self.rotation == '180°':
-            val = u[:, 0] + u[:, 1] - 1.0 + val
+            val = np.log((1 - u[:, 0]) + (1 - u[:, 1]) - 1.0 + np.exp(val))
         elif self.rotation == '270°':
-            val = u[:, 1] - val
+            val = np.log(u[:, 1] - np.exp(val))
         return val
 
     def cdf(self, u):
