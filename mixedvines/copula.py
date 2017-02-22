@@ -218,13 +218,15 @@ class Copula(object):
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
-            if self.rotation == '90°':
-                self.rotation = '270°'
-            elif self.rotation == '270°':
-                self.rotation = '90°'
-            val = self.ccdf(u[:, [1, 0]], axis=1)
-            # Recover original rotation
-            self.rotation = rotation
+            try:
+                if self.rotation == '90°':
+                    self.rotation = '270°'
+                elif self.rotation == '270°':
+                    self.rotation = '90°'
+                val = self.ccdf(u[:, [1, 0]], axis=1)
+            finally:
+                # Recover original rotation
+                self.rotation = rotation
             return val
         elif axis == 1:
             self._rotate_input(u)
@@ -276,13 +278,15 @@ class Copula(object):
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
-            if self.rotation == '90°':
-                self.rotation = '270°'
-            elif self.rotation == '270°':
-                self.rotation = '90°'
-            val = self.ppcf(u[:, [1, 0]], axis=1)
-            # Recover original rotation
-            self.rotation = rotation
+            try:
+                if self.rotation == '90°':
+                    self.rotation = '270°'
+                elif self.rotation == '270°':
+                    self.rotation = '90°'
+                val = self.ppcf(u[:, [1, 0]], axis=1)
+            finally:
+                # Recover original rotation
+                self.rotation = rotation
             return val
         elif axis == 1:
             self._rotate_input(u)

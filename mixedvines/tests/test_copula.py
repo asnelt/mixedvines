@@ -224,3 +224,132 @@ class CopulaTestCase(TestCase):
                            0.262144])
         p_ccdf = c.ccdf(u, axis=0)
         assert_allclose(p_ccdf, r_ccdf)
+
+    def test_ppcf(self):
+        '''
+        Tests the conditional cumulative distribution function.
+        '''
+        u = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
+
+        # Independence copula
+        c = Copula('ind')
+        # Comparison values obtained from R
+        r_ppcf = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_ppcf, r_ppcf)
+        # Test other axis
+        r_ppcf = np.array([0.2, 0.35, 0.5, 0.65, 0.8])
+        p_ppcf = c.ppcf(u, axis=0)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Gaussian copula family
+        c = Copula('gaussian', 0.5)
+        # Comparison values obtained from R
+        r_ppcf = np.array([0.0, 0.218642669, 0.5, 0.781357331, 1.0])
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_ppcf, r_ppcf)
+        # Test other axis
+        r_ppcf = np.array([0.0, 0.2511286797, 0.5, 0.7488713203, 1.0])
+        p_ppcf = c.ppcf(u, axis=0)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Student t copula family
+        c = Copula('student', [0.5, 10])
+        # Comparison values obtained from R
+        r_ppcf = np.array([0.0, 0.2270931079, 0.5, 0.7729068921, 1.0])
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_ppcf, r_ppcf)
+        # Test other axis
+        r_ppcf = np.array([0.0, 0.2546291855, 0.5, 0.7453708145, 1.0])
+        p_ppcf = c.ppcf(u, axis=0)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Clayton copula family
+        c = Copula('clayton', 5)
+        # Comparison values obtained from R
+        r_ppcf = np.array([0.0, 0.2994846602, 0.5211309028, 0.7859307932, 1.0])
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_ppcf, r_ppcf)
+        # Test other axis
+        r_ppcf = np.array([0.0, 0.2337467913, 0.5211309028, 0.8127416749,
+                           0.9634924840])
+        p_ppcf = c.ppcf(u, axis=0)
+        assert_allclose(p_ppcf, r_ppcf)
+
+    def test_rotation(self):
+        '''
+        Tests the copula rotation.
+        '''
+        u = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
+
+        # Clayton copula family rotated 90°
+        c = Copula('clayton', 5, rotation='90°')
+        # Comparison values obtained from R
+        r_logpdf = np.array([-np.inf, -2.571322188, 0.9946292379,
+                             -1.7680858282, -np.inf])
+        r_pdf = np.array([0.0, 0.0764344179, 2.7037217178, 0.1706593477, 0.0])
+        r_logcdf = np.array([-np.inf, -7.9010702481, -2.7590553856,
+                             -0.9133704691, -0.2231435513])
+        r_cdf = np.array([0.0, 0.000370347, 0.0633515829, 0.4011698124, 0.8])
+        r_ccdf = np.array([0.0, 0.003208462, 0.4435793443, 0.9801128956, 1.0])
+        r_ppcf = np.array([0.0, 0.5506995734, 0.5211309028, 0.452724971, 1.0])
+        p_logpdf = c.logpdf(u)
+        p_pdf = c.pdf(u)
+        p_logcdf = c.logcdf(u)
+        p_cdf = c.cdf(u)
+        p_ccdf = c.ccdf(u)
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_logpdf, r_logpdf)
+        assert_allclose(p_pdf, r_pdf)
+        assert_allclose(p_logcdf, r_logcdf)
+        assert_allclose(p_cdf, r_cdf)
+        assert_allclose(p_ccdf, r_ccdf)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Clayton copula family rotated 180°
+        c = Copula('clayton', 5, rotation='180°')
+        # Comparison values obtained from R
+        r_logpdf = np.array([-np.inf, 0.6666753203, 0.9946292379, 0.7858645247,
+                             -np.inf])
+        r_pdf = np.array([0.0, 1.9477508961, 2.7037217178, 2.1943031503, 0.0])
+        r_logcdf = np.array([-np.inf, -1.5602819348, -0.8286269453,
+                             -0.4437013452, -0.2231435513])
+        r_cdf = np.array([0.0, 0.2100768349, 0.4366484171, 0.6416570262, 0.8])
+        r_ccdf = np.array([0.0, 0.3163606244, 0.5564206557, 0.8916601339, 1.0])
+        r_ppcf = np.array([0.0, 0.2140692068, 0.4788690972, 0.7005153398, 1.0])
+        p_logpdf = c.logpdf(u)
+        p_pdf = c.pdf(u)
+        p_logcdf = c.logcdf(u)
+        p_cdf = c.cdf(u)
+        p_ccdf = c.ccdf(u)
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_logpdf, r_logpdf)
+        assert_allclose(p_pdf, r_pdf)
+        assert_allclose(p_logcdf, r_logcdf)
+        assert_allclose(p_cdf, r_cdf)
+        assert_allclose(p_ccdf, r_ccdf)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Clayton copula family rotated 270°
+        c = Copula('clayton', 5, rotation='270°')
+        # Comparison values obtained from R
+        r_logpdf = np.array([-np.inf, -1.7680858282, 0.9946292379,
+                             -2.5713221880, -np.inf])
+        r_pdf = np.array([0.0, 0.1706593477, 2.7037217178, 0.0764344179, 0.0])
+        r_logcdf = np.array([-38.123095, -6.7509119186, -2.7590553856,
+                             -0.9153652928, -0.2231435513])
+        r_cdf = np.array([0.0, 0.0011698124, 0.0633515829, 0.400370347, 0.8])
+        r_ccdf = np.array([0.0, 0.0198871044, 0.5564206557, 0.996791538, 1.0])
+        r_ppcf = np.array([0.0, 0.547275029, 0.4788690972, 0.4493004266, 1.0])
+        p_logpdf = c.logpdf(u)
+        p_pdf = c.pdf(u)
+        p_logcdf = c.logcdf(u)
+        p_cdf = c.cdf(u)
+        p_ccdf = c.ccdf(u)
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_logpdf, r_logpdf)
+        assert_allclose(p_pdf, r_pdf)
+        assert_allclose(p_logcdf, r_logcdf)
+        assert_allclose(p_cdf, r_cdf, atol=1e-10)
+        assert_allclose(p_ccdf, r_ccdf, atol=1e-10)
+        assert_allclose(p_ppcf, r_ppcf, atol=1e-10)
