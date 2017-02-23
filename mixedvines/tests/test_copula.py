@@ -65,14 +65,6 @@ class CopulaTestCase(TestCase):
         p_logpdf = c.logpdf(u)
         assert_allclose(p_logpdf, r_logpdf)
 
-        # Student t copula family
-        c = Copula('student', [0.5, 10])
-        # Comparison values obtained from R
-        r_logpdf = np.array([-np.inf, 0.1491425169, 0.1937586741,
-                             0.1491425169, -np.inf])
-        p_logpdf = c.logpdf(u)
-        assert_allclose(p_logpdf, r_logpdf)
-
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
@@ -98,13 +90,6 @@ class CopulaTestCase(TestCase):
         c = Copula('gaussian', 0.5)
         # Comparison values obtained from R
         r_pdf = np.array([0.0, 1.2417679440, 1.1547005384, 1.2417679440, 0.0])
-        p_pdf = c.pdf(u)
-        assert_allclose(p_pdf, r_pdf)
-
-        # Student t copula family
-        c = Copula('student', [0.5, 10])
-        # Comparison values obtained from R
-        r_pdf = np.array([0.0, 1.1608384165, 1.2138033255, 1.1608384165, 0.0])
         p_pdf = c.pdf(u)
         assert_allclose(p_pdf, r_pdf)
 
@@ -200,18 +185,6 @@ class CopulaTestCase(TestCase):
         p_ccdf = c.ccdf(u, axis=0)
         assert_allclose(p_ccdf, r_ccdf)
 
-        # Student t copula family
-        c = Copula('student', [0.5, 10])
-        # Comparison values obtained from R
-        r_ccdf = np.array([0.0, 0.2794817821, 0.5, 0.7205182179, 1.0])
-        p_ccdf = c.ccdf(u)
-        assert_allclose(p_ccdf, r_ccdf)
-        # Test other axis
-        r_ccdf = np.array([0.9590678844, 0.4784831978, 0.5, 0.5215168022,
-                           0.0409321156])
-        p_ccdf = c.ccdf(u, axis=0)
-        assert_allclose(p_ccdf, r_ccdf)
-
         # Clayton copula family
         c = Copula('clayton', 5)
         # Comparison values obtained from R
@@ -250,17 +223,6 @@ class CopulaTestCase(TestCase):
         assert_allclose(p_ppcf, r_ppcf)
         # Test other axis
         r_ppcf = np.array([0.0, 0.2511286797, 0.5, 0.7488713203, 1.0])
-        p_ppcf = c.ppcf(u, axis=0)
-        assert_allclose(p_ppcf, r_ppcf)
-
-        # Student t copula family
-        c = Copula('student', [0.5, 10])
-        # Comparison values obtained from R
-        r_ppcf = np.array([0.0, 0.2270931079, 0.5, 0.7729068921, 1.0])
-        p_ppcf = c.ppcf(u)
-        assert_allclose(p_ppcf, r_ppcf)
-        # Test other axis
-        r_ppcf = np.array([0.0, 0.2546291855, 0.5, 0.7453708145, 1.0])
         p_ppcf = c.ppcf(u, axis=0)
         assert_allclose(p_ppcf, r_ppcf)
 

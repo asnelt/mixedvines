@@ -44,7 +44,7 @@ class Copula(object):
         '''
         Checks family parameter.
         '''
-        families = ['ind', 'gaussian', 'student', 'clayton']
+        families = ['ind', 'gaussian', 'clayton']
         if family not in families:
             raise ValueError("Family '" + family + "' not supported.")
 
@@ -58,10 +58,6 @@ class Copula(object):
         if family == 'gaussian' and (theta < -1 or theta > 1):
             raise ValueError("For Gaussian family, 'theta' must be a scalar in"
                              " [-1, 1].")
-        if family == 'student' \
-                and (theta[0] < -1 or theta[0] > 1 or theta[1] <= 0):
-            raise ValueError("For Student t family, 'theta[0]' must be in"
-                             " [-1, 1] and 'theta[1]' must be positive.")
         if family == 'clayton' and theta < 0:
             raise ValueError("For Clayton family, theta must be a non-negative"
                              " scalar.")
@@ -113,20 +109,6 @@ class Copula(object):
             val[inner] /= 2 * (1 - self.theta**2)
             val[inner] -= np.log(1 - self.theta**2) / 2
             val[outer] = -np.inf
-        elif self.family == 'student':
-            val = np.zeros(u.shape[0])
-            x = t.ppf(u, self.theta[1])
-            fac1 = gammaln(self.theta[1] / 2 + 1)
-            fac2 = -gammaln(self.theta[1] / 2) - np.log(np.pi) \
-                - np.log(self.theta[1]) - np.log(1 - self.theta[0]**2) \
-                / 2 - np.log(t.pdf(x[inner, 0], self.theta[1])) \
-                - np.log(t.pdf(x[inner, 1], self.theta[1]))
-            fac3 = (-(self.theta[1] + 2) / 2) \
-                * np.log(1 + (x[inner, 0]**2 + x[inner, 1]**2
-                              - self.theta[0] * x[inner, 0] * x[inner, 1])
-                         / (self.theta[1] * (1 - self.theta[0]**2)))
-            val[inner] = fac1 + fac2 + fac3
-            val[outer] = -np.inf
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = np.zeros(u.shape[0])
@@ -175,10 +157,6 @@ class Copula(object):
             val[np.any(u == 0.0, axis=1)] = -np.inf
             val[u[:, 0] == 1.0] = np.log(u[u[:, 0] == 1.0, 1])
             val[u[:, 1] == 1.0] = np.log(u[u[:, 1] == 1.0, 0])
-        elif self.family == 'student':
-            raise NotImplementedError
-            # val = multivariate_t.logcdf(t.ppf(u, self.theta[1]), \
-            #         [[1, self.theta[0]], [self.theta[0], 1]], self.theta[1])
         elif self.family == 'clayton':
             if self.theta == 0:
                 val = np.sum(np.log(u), axis=1)
@@ -236,22 +214,6 @@ class Copula(object):
                 x = norm.ppf(u)
                 val = norm.cdf((x[:, 0] - self.theta * x[:, 1])
                                / np.sqrt(1 - self.theta**2))
-            elif self.family == 'student':
-                val = np.zeros(u.shape[0])
-                x = t.ppf(u, self.theta[1])
-                inner = np.bitwise_and(u[:, 1] != 0.0, u[:, 1] != 1.0)
-                val[inner] \
-                    = t.cdf(np.sqrt((self.theta[1] + 1)
-                                    / (self.theta[1] + x[inner, 1]**2))
-                            * (x[inner, 0] - self.theta[0] * x[inner, 1])
-                            / (np.sqrt(1 - self.theta[0]**2)),
-                            self.theta[1] + 1)
-                val[u[:, 1] == 0.0] = t.cdf(np.sqrt((self.theta[1] + 1)
-                                                    / (1 - self.theta[0]**2))
-                                            * self.theta[0], self.theta[1] + 1)
-                val[u[:, 1] == 1.0] = t.cdf(-np.sqrt((self.theta[1] + 1)
-                                                     / (1 - self.theta[0]**2))
-                                            * self.theta[0], self.theta[1] + 1)
             elif self.family == 'clayton':
                 if self.theta == 0:
                     val = u[:, 0]
@@ -296,13 +258,6 @@ class Copula(object):
                 x = norm.ppf(u)
                 val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2)
                                + self.theta * x[:, 1])
-            elif self.family == 'student':
-                x = t.ppf(u, self.theta[1])
-                val = t.cdf(np.sqrt(((1 - self.theta[0]**2)
-                                     * (self.theta[1] + x[:, 1]**2))
-                                    / (self.theta[1] + 1))
-                            * t.ppf(u[:, 0], self.theta[1] + 1)
-                            + self.theta[0] * x[:, 1], self.theta[1])
             elif self.family == 'clayton':
                 if self.theta == 0:
                     val = u[:, 0]
@@ -340,9 +295,6 @@ class Copula(object):
         elif family == 'gaussian':
             initial_point = (0.0)
             bnds = [(-1.0, 1.0)]
-        elif family == 'student':
-            initial_point = (0.0, 1.0)
-            bnds = [(-1.0, 1.0), (1e-1, 1000)]
         elif family == 'clayton':
             initial_point = (1.0)
             bnds = [(1e-3, 20)]
