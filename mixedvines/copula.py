@@ -19,8 +19,7 @@ This module implements copula distributions.
 '''
 from __future__ import division
 from scipy.optimize import minimize
-from scipy.stats import norm, t, uniform, mvn
-from scipy.special import gammaln
+from scipy.stats import norm, uniform, mvn
 import numpy as np
 
 
@@ -44,7 +43,7 @@ class Copula(object):
         '''
         Checks family parameter.
         '''
-        families = ['ind', 'gaussian', 'clayton']
+        families = ['ind', 'gaussian', 'clayton', 'frank']
         if family not in families:
             raise ValueError("Family '" + family + "' not supported.")
 
@@ -61,6 +60,8 @@ class Copula(object):
         if family == 'clayton' and theta < 0:
             raise ValueError("For Clayton family, theta must be a non-negative"
                              " scalar.")
+        if family == 'frank' and theta is None:
+            raise ValueError("For Frank family, theta must be a scalar.")
 
     @staticmethod
     def _check_rotation(rotation):
@@ -99,28 +100,33 @@ class Copula(object):
         self._rotate_input(u)
         inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
         outer = np.invert(inner)
-        if self.family == 'ind':
-            val = np.zeros(u.shape[0])
-        elif self.family == 'gaussian':
-            val = np.zeros(u.shape[0])
+        val = np.zeros(u.shape[0])
+        # For 'ind' family, val remains at zero
+        if self.family == 'gaussian':
             x = norm.ppf(u)
             val[inner] = 2 * self.theta * x[inner, 0] * x[inner, 1] \
                 - self.theta**2 * (x[inner, 0]**2 + x[inner, 1]**2)
             val[inner] /= 2 * (1 - self.theta**2)
             val[inner] -= np.log(1 - self.theta**2) / 2
-            val[outer] = -np.inf
         elif self.family == 'clayton':
-            if self.theta == 0:
-                val = np.zeros(u.shape[0])
-            else:
-                val = np.zeros(u.shape[0])
+            if self.theta != 0:
                 val[inner] = np.log(1 + self.theta) \
                     + (-1 - self.theta) \
                     * (np.log(u[inner, 0]) + np.log(u[inner, 1])) \
                     + (-1 / self.theta-2) * np.log(u[inner, 0]**(-self.theta)
                                                    + u[inner, 1]**(-self.theta)
                                                    - 1)
-                val[outer] = -np.inf
+        elif self.family == 'frank':
+            if self.theta != 0:
+                val[inner] = np.log(-self.theta * np.expm1(-self.theta)
+                                    * np.exp(-self.theta
+                                             * (u[inner, 0] + u[inner, 1]))
+                                    / (np.expm1(-self.theta)
+                                       + np.expm1(-self.theta * u[inner, 0])
+                                       * np.expm1(-self.theta * u[inner, 1]))
+                                    ** 2)
+        # Assign zero mass to border
+        val[outer] = -np.inf
         return val
 
     def pdf(self, u):
@@ -165,6 +171,16 @@ class Copula(object):
                 val = (-1 / self.theta) \
                     * np.log(np.maximum(u[:, 0]**(-self.theta)
                                         + u[:, 1]**(-self.theta) - 1, 0))
+                np.seterr(**old_settings)
+        elif self.family == 'frank':
+            if self.theta == 0:
+                val = np.sum(np.log(u), axis=1)
+            else:
+                old_settings = np.seterr(divide='ignore')
+                val = np.log(-np.log1p(np.expm1(-self.theta * u[:, 0])
+                                       * np.expm1(-self.theta * u[:, 1])
+                                       / (np.expm1(-self.theta)))) \
+                    - np.log(self.theta)
                 np.seterr(**old_settings)
         # Transform according to rotation, but take _rotate_input into account
         if self.rotation == '90°':
@@ -224,6 +240,15 @@ class Copula(object):
                                           * (u[gtz, 0]**(-self.theta)
                                              + u[gtz, 1]**(-self.theta) - 1)
                                           ** (-1 - 1 / self.theta), 0)
+            elif self.family == 'frank':
+                if self.theta == 0:
+                    val = u[:, 0]
+                else:
+                    val = np.exp(-self.theta * u[:, 1]) \
+                            * np.expm1(-self.theta * u[:, 0]) \
+                            / (np.expm1(-self.theta)
+                               + np.expm1(-self.theta * u[:, 0])
+                               * np.expm1(-self.theta * u[:, 1]))
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
@@ -268,6 +293,14 @@ class Copula(object):
                                 + (u[gtz, 0] * (u[gtz, 1]**(1 + self.theta)))
                                 ** (-self.theta / (1 + self.theta))) \
                         ** (-1 / self.theta)
+            elif self.family == 'frank':
+                if self.theta == 0:
+                    val = u[:, 0]
+                else:
+                    val = -np.log1p(u[:, 0] * np.expm1(-self.theta)
+                                    / (np.exp(-self.theta * u[:, 1]) - u[:, 0]
+                                       * np.expm1(-self.theta * u[:, 1]))) \
+                          / self.theta
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
@@ -298,6 +331,9 @@ class Copula(object):
         elif family == 'clayton':
             initial_point = (1.0)
             bnds = [(1e-3, 20)]
+        elif family == 'frank':
+            initial_point = (0.0)
+            bnds = [(-20, 20)]
         # Optimize copula parameters
         copula = Copula(family, theta=initial_point, rotation=rotation)
 

@@ -52,14 +52,14 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
-        r_logpdf = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+        # Comparison values
+        r_logpdf = np.array([-np.inf, 0.0, 0.0, 0.0, -np.inf])
         p_logpdf = c.logpdf(u)
         assert_allclose(p_logpdf, r_logpdf)
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_logpdf = np.array([-np.inf, 0.2165361255, 0.1438410362,
                              0.2165361255, -np.inf])
         p_logpdf = c.logpdf(u)
@@ -67,9 +67,17 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_logpdf = np.array([-np.inf, 0.7858645247, 0.9946292379,
                              0.6666753203, -np.inf])
+        p_logpdf = c.logpdf(u)
+        assert_allclose(p_logpdf, r_logpdf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_logpdf = np.array([-np.inf, 0.4165775202, 0.3876837693, 0.4165775202,
+                             -np.inf])
         p_logpdf = c.logpdf(u)
         assert_allclose(p_logpdf, r_logpdf)
 
@@ -81,22 +89,29 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
-        r_pdf = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+        # Comparison values
+        r_pdf = np.array([0.0, 1.0, 1.0, 1.0, 0.0])
         p_pdf = c.pdf(u)
         assert_allclose(p_pdf, r_pdf)
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_pdf = np.array([0.0, 1.2417679440, 1.1547005384, 1.2417679440, 0.0])
         p_pdf = c.pdf(u)
         assert_allclose(p_pdf, r_pdf)
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_pdf = np.array([0.0, 2.1943031503, 2.7037217178, 1.9477508961, 0.0])
+        p_pdf = c.pdf(u)
+        assert_allclose(p_pdf, r_pdf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_pdf = np.array([0.0, 1.5167615765, 1.4735637246, 1.5167615765, 0.0])
         p_pdf = c.pdf(u)
         assert_allclose(p_pdf, r_pdf)
 
@@ -108,7 +123,7 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
+        # Comparison values
         r_logcdf = np.array([-np.inf, -2.4361164856, -1.3862943611,
                              -0.7184649885, -0.2231435513])
         p_logcdf = c.logcdf(u)
@@ -116,7 +131,7 @@ class CopulaTestCase(TestCase):
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_logcdf = np.array([-np.inf, -1.8836553477, -1.0986122887,
                              -0.5941468105, -0.2231435513])
         p_logcdf = c.logcdf(u)
@@ -124,9 +139,17 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_logcdf = np.array([-np.inf, -1.4202358053, -0.8286269453,
                              -0.4941703709, -0.2231435513])
+        p_logcdf = c.logcdf(u)
+        assert_allclose(p_logcdf, r_logcdf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_logcdf = np.array([-np.inf, -1.7145879734, -0.9751162414,
+                             -0.5446618572, -0.2231435513])
         p_logcdf = c.logcdf(u)
         assert_allclose(p_logcdf, r_logcdf)
 
@@ -138,22 +161,29 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
+        # Comparison values
         r_cdf = np.array([0.0, 0.0875, 0.25, 0.4875, 0.8])
         p_cdf = c.cdf(u)
         assert_allclose(p_cdf, r_cdf)
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_cdf = np.array([0.0, 0.1520333540, 0.3333333333, 0.5520333540, 0.8])
         p_cdf = c.cdf(u)
         assert_allclose(p_cdf, r_cdf)
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_cdf = np.array([0.0, 0.2416570262, 0.4366484171, 0.6100768349, 0.8])
+        p_cdf = c.cdf(u)
+        assert_allclose(p_cdf, r_cdf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_cdf = np.array([0.0, 0.1800378858, 0.3771485107, 0.5800378858, 0.8])
         p_cdf = c.cdf(u)
         assert_allclose(p_cdf, r_cdf)
 
@@ -165,7 +195,7 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
+        # Comparison values
         r_ccdf = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         p_ccdf = c.ccdf(u)
         assert_allclose(p_ccdf, r_ccdf)
@@ -176,7 +206,7 @@ class CopulaTestCase(TestCase):
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_ccdf = np.array([0.0, 0.2889793807, 0.5, 0.7110206193, 1.0])
         p_ccdf = c.ccdf(u)
         assert_allclose(p_ccdf, r_ccdf)
@@ -187,7 +217,7 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_ccdf = np.array([0.0, 0.1083398661, 0.4435793443, 0.6836393756,
                            1.0])
         p_ccdf = c.ccdf(u)
@@ -195,6 +225,18 @@ class CopulaTestCase(TestCase):
         # Test other axis
         r_ccdf = np.array([0.0, 0.815748922, 0.4435793443, 0.2896940854,
                            0.262144])
+        p_ccdf = c.ccdf(u, axis=0)
+        assert_allclose(p_ccdf, r_ccdf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_ccdf = np.array([0.0, 0.3070854, 0.5, 0.6929146, 1.0])
+        p_ccdf = c.ccdf(u)
+        assert_allclose(p_ccdf, r_ccdf)
+        # Test other axis
+        r_ccdf = np.array([0.63640865, 0.58629237, 0.5, 0.41370763,
+                           0.36359135])
         p_ccdf = c.ccdf(u, axis=0)
         assert_allclose(p_ccdf, r_ccdf)
 
@@ -206,7 +248,7 @@ class CopulaTestCase(TestCase):
 
         # Independence copula
         c = Copula('ind')
-        # Comparison values obtained from R
+        # Comparison values
         r_ppcf = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
         p_ppcf = c.ppcf(u)
         assert_allclose(p_ppcf, r_ppcf)
@@ -217,7 +259,7 @@ class CopulaTestCase(TestCase):
 
         # Gaussian copula family
         c = Copula('gaussian', 0.5)
-        # Comparison values obtained from R
+        # Comparison values
         r_ppcf = np.array([0.0, 0.218642669, 0.5, 0.781357331, 1.0])
         p_ppcf = c.ppcf(u)
         assert_allclose(p_ppcf, r_ppcf)
@@ -228,13 +270,24 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family
         c = Copula('clayton', 5)
-        # Comparison values obtained from R
+        # Comparison values
         r_ppcf = np.array([0.0, 0.2994846602, 0.5211309028, 0.7859307932, 1.0])
         p_ppcf = c.ppcf(u)
         assert_allclose(p_ppcf, r_ppcf)
         # Test other axis
         r_ppcf = np.array([0.0, 0.2337467913, 0.5211309028, 0.8127416749,
                            0.9634924840])
+        p_ppcf = c.ppcf(u, axis=0)
+        assert_allclose(p_ppcf, r_ppcf)
+
+        # Frank copula family
+        c = Copula('frank', 5)
+        # Comparison values
+        r_ppcf = np.array([0.0, 0.21162507, 0.5, 0.78837493, 1.0])
+        p_ppcf = c.ppcf(u)
+        assert_allclose(p_ppcf, r_ppcf)
+        # Test other axis
+        r_ppcf = np.array([0.0442921, 0.20900068, 0.5, 0.79099932, 0.9557079])
         p_ppcf = c.ppcf(u, axis=0)
         assert_allclose(p_ppcf, r_ppcf)
 
@@ -246,7 +299,7 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family rotated 90°
         c = Copula('clayton', 5, rotation='90°')
-        # Comparison values obtained from R
+        # Comparison values
         r_logpdf = np.array([-np.inf, -2.571322188, 0.9946292379,
                              -1.7680858282, -np.inf])
         r_pdf = np.array([0.0, 0.0764344179, 2.7037217178, 0.1706593477, 0.0])
@@ -270,7 +323,7 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family rotated 180°
         c = Copula('clayton', 5, rotation='180°')
-        # Comparison values obtained from R
+        # Comparison values
         r_logpdf = np.array([-np.inf, 0.6666753203, 0.9946292379, 0.7858645247,
                              -np.inf])
         r_pdf = np.array([0.0, 1.9477508961, 2.7037217178, 2.1943031503, 0.0])
@@ -294,7 +347,7 @@ class CopulaTestCase(TestCase):
 
         # Clayton copula family rotated 270°
         c = Copula('clayton', 5, rotation='270°')
-        # Comparison values obtained from R
+        # Comparison values
         r_logpdf = np.array([-np.inf, -1.7680858282, 0.9946292379,
                              -2.5713221880, -np.inf])
         r_pdf = np.array([0.0, 0.1706593477, 2.7037217178, 0.0764344179, 0.0])
