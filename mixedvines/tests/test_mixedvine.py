@@ -44,6 +44,18 @@ class MarginalTestCase(TestCase):
         # Recover original random state
         np.random.set_state(self.random_state)
 
+    def test_fit(self):
+        '''
+        Tests the fit method.
+        '''
+        samples = np.linspace(-2, 2, 3)
+        # Normal distribution
+        m = Marginal.fit(samples, True)
+        # Comparison values
+        r_logpdf = np.array([-2.15935316, -1.40935316, -2.15935316])
+        p_logpdf = m.logpdf(samples)
+        assert_allclose(p_logpdf, r_logpdf)
+
 
 class MixedVineTestCase(TestCase):
     '''
