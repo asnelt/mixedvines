@@ -27,6 +27,9 @@ class Copula(object):
     '''
     This class represents a copula.
     '''
+    family_options = ['ind', 'gaussian', 'clayton', 'frank']
+    rotation_options = ['90°', '180°', '270°']
+
     def __init__(self, family, theta=None, rotation=None):
         '''
         Constructs a copula of a given family.
@@ -43,8 +46,7 @@ class Copula(object):
         '''
         Checks family parameter.
         '''
-        families = ['ind', 'gaussian', 'clayton', 'frank']
-        if family not in families:
+        if family not in Copula.family_options:
             raise ValueError("Family '" + family + "' not supported.")
 
     @staticmethod
@@ -68,8 +70,7 @@ class Copula(object):
         '''
         Checks rotation parameter.
         '''
-        rotations = ['90°', '180°', '270°']
-        if rotation and rotation not in rotations:
+        if rotation and rotation not in Copula.rotation_options:
             raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
@@ -317,35 +318,53 @@ class Copula(object):
         return samples
 
     @staticmethod
-    def fit(samples, family, rotation=None):
+    def fit(samples, family=None, rotation=None):
         '''
         Fits the parameters of the copula to the given samples.
         '''
-        Copula._check_family(family)
-        Copula._check_rotation(rotation)
-        if family == 'ind':
-            return Copula(family, theta=None, rotation=rotation)
-        elif family == 'gaussian':
-            initial_point = (0.0)
-            bnds = [(-1.0, 1.0)]
-        elif family == 'clayton':
-            initial_point = (1.0)
-            bnds = [(1e-3, 20)]
-        elif family == 'frank':
-            initial_point = (0.0)
-            bnds = [(-20, 20)]
-        # Optimize copula parameters
-        copula = Copula(family, theta=initial_point, rotation=rotation)
+        if family:
+            Copula._check_family(family)
+            Copula._check_rotation(rotation)
+            if family == 'ind':
+                return Copula(family, theta=None, rotation=rotation)
+            elif family == 'gaussian':
+                initial_point = (0.0)
+                bnds = [(-1.0, 1.0)]
+            elif family == 'clayton':
+                initial_point = (1.0)
+                bnds = [(1e-3, 20)]
+            elif family == 'frank':
+                initial_point = (0.0)
+                bnds = [(-20, 20)]
+            # Optimize copula parameters
+            copula = Copula(family, theta=initial_point, rotation=rotation)
 
-        def fun(theta):
-            '''
-            Calculates the cost of a given theta parameter.
-            '''
-            return Copula._theta_cost(theta, samples, copula)
+            def fun(theta):
+                '''
+                Calculates the cost of a given theta parameter.
+                '''
+                return Copula._theta_cost(theta, samples, copula)
 
-        result = minimize(fun, initial_point, method='TNC', bounds=bnds)
-        copula.theta = result.x
-        return copula
+            result = minimize(fun, initial_point, method='TNC', bounds=bnds)
+            copula.theta = result.x
+            return copula
+        else:
+            # Also find best fitting family
+            copulas = []
+            for family in Copula.family_options:
+                copulas.append(Copula.fit(samples, family))
+                # For Clayton family, optimize rotation as well
+                if family == 'clayton':
+                    for rotation in Copula.rotation_options:
+                        copulas.append(Copula.fit(samples, family, rotation))
+            # Calculate Akaike information criterion
+            aic = np.zeros(len(copulas))
+            for i, copula in enumerate(copulas):
+                aic[i] = - 2 * np.sum(copula.logpdf(samples))
+                if copula.theta:
+                    aic[i] += 2 * len(copula.theta)
+            best_copula = copulas[np.argmin(aic)]
+            return best_copula
 
     @staticmethod
     def _theta_cost(theta, samples, copula):
