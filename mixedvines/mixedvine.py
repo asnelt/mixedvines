@@ -115,12 +115,58 @@ class MixedVine(object):
     '''
     This class represents a vine model with mixed marginals.
     '''
-    def __init__(self, copulas, marginals, vine_type="c-vine"):
+
+    class VineLayer(object):
         '''
-        Constructs a mixed vine model from a copula and marginals.
+        This class represents a layer of a copula vine tree. A tree description
+        in layers is advantageous, because operations on the vine work in
+        sweeps from layer to layer.
         '''
-        self.copulas = copulas
-        self.marginals = marginals
+        def __init__(self, input_layer=None, input_indices=None,
+                     marginals=None, copulas=None):
+            '''
+            Constructs a layer of a copula vine tree.
+            '''
+            self.input_layer = input_layer
+            self.output_layer = None
+            if input_layer:
+                input_layer.output_layer = self
+            self.input_indices = input_indices
+            self.marginals = marginals
+            self.copulas = copulas
+
+        def is_marginal_layer(self):
+            '''
+            Determines whether the layer is the marginal layer.
+            '''
+            return not self.input_layer
+
+        def fit(self, samples, is_continuous):
+            '''
+            Fits a vine tree.
+            '''
+            if self.is_marginal_layer():
+                self.marginals = []
+                output_u = np.zeros(samples.shape)
+                for i in range(samples.shape[1]):
+                    self.marginals.append(Marginal.fit(samples[:, i],
+                                                       is_continuous[i]))
+                    output_u[:, i] = self.marginals[i].cdf(samples[:, i])
+            else:
+                input_u = self.input_layer.fit(samples, is_continuous)
+                output_u = np.zeros((samples.shape[0],
+                                     len(self.input_indices)))
+                self.copulas = []
+                for i, i_ind in enumerate(self.input_indices):
+                    self.copulas.append(Copula.fit(input_u[:, i_ind]))
+                    output_u[:, i] = self.copulas[i].ccdf(input_u[:, i_ind])
+            return output_u
+
+    def __init__(self, root=None, vine_type='c-vine'):
+        '''
+        Constructs a mixed vine model from a VineLayer root.
+        '''
+        self.root = root
         self.vine_type = vine_type
 
     def logpdf(self, x):
@@ -139,24 +185,7 @@ class MixedVine(object):
         '''
         Generates random variates from the mixed vine.
         '''
-        d = len(self.marginals)
-        w = np.random.rand(size, d)
-        v = np.zeros(shape=[size, d, d])
-        v[:, 0, 0] = w[:, 0]
-        for i in range(1, d):
-            v[:, i, 0] = np.reshape(w[:, i], [size, 1, 1])
-            for k in reversed(range(i-1)):
-                v[:, i, 1] = self.copulas[k, i].ppcf(
-                        np.array([v[:, k, k], v[:, i, 0]]).T, axis=0)
-            if i < d:
-                for j in range(i-1):
-                    v[:, i, j+1] = self.copulas[j, i].ccdf(
-                            np.array([v[:, j, j], v[:, i, j]]).T, axis=0)
-        u = v[:, :, 0]
-        x = np.zeros(shape=u.shape)
-        for i, marginal in enumerate(self.marginals):
-            x[:, i] = marginal.ppf(u[:, i])
-        return x
+        raise NotImplementedError
 
     def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000):
         '''
@@ -182,14 +211,30 @@ class MixedVine(object):
         return h, sem
 
     @staticmethod
-    def fit(samples, is_continuous, vine_type="c-vine", trunc=None,
+    def fit(samples, is_continuous, vine_type='c-vine', trunc=None,
             do_refine=False):
         '''
         Fits the mixed vine to the given samples.
         '''
-        raise NotImplementedError
-        marginals = []
-        for i in range(samples.shape[1]):
-            marginals.append(Marginal.fit(samples[:, i], is_continuous[i]))
-        copulas = []
-        return MixedVine(copulas, marginals, vine_type)
+        if vine_type != 'c-vine' or trunc or do_refine:
+            raise NotImplementedError
+        root = MixedVine._construct_c_vine(samples.shape[1])
+        root.fit(samples, is_continuous)
+        return MixedVine(root, vine_type)
+
+    @staticmethod
+    def _construct_c_vine(dim):
+        '''
+        Constructs a c-vine tree without fitting it.
+        '''
+        layer = MixedVine.VineLayer()
+        for i in range(1, dim):
+            input_indices = []
+            # For each successor layer, generate c-vine input indices
+            for j in range(dim - i):
+                input_indices.append(np.array([0, j+1]))
+            # Generate vine layer
+            layer = MixedVine.VineLayer(input_layer=layer,
+                                        input_indices=input_indices)
+        root = layer
+        return root
