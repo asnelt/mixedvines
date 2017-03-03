@@ -141,7 +141,7 @@ class MixedVine(object):
             '''
             return not self.input_layer
 
-        def fit(self, samples, is_continuous):
+        def fit(self, samples, is_continuous, trunc_level=None):
             '''
             Fits a vine tree.
             '''
@@ -154,12 +154,18 @@ class MixedVine(object):
                     output_u[:, i] = self.marginals[i].cdf(samples[:, i])
             else:
                 input_u = self.input_layer.fit(samples, is_continuous)
+                truncate = trunc_level and samples.shape[1] \
+                        - len(self.input_indices) > trunc_level - 1
                 output_u = np.zeros((samples.shape[0],
                                      len(self.input_indices)))
                 self.copulas = []
                 for i, i_ind in enumerate(self.input_indices):
-                    self.copulas.append(Copula.fit(input_u[:, i_ind]))
-                    output_u[:, i] = self.copulas[i].ccdf(input_u[:, i_ind])
+                    if truncate:
+                        next_copula = Copula('ind')
+                    else:
+                        next_copula = Copula.fit(input_u[:, i_ind])
+                    self.copulas.append(next_copula)
+                    output_u[:, i] = next_copula.ccdf(input_u[:, i_ind])
             return output_u
 
     def __init__(self, root=None, vine_type='c-vine'):
@@ -211,15 +217,15 @@ class MixedVine(object):
         return h, sem
 
     @staticmethod
-    def fit(samples, is_continuous, vine_type='c-vine', trunc=None,
+    def fit(samples, is_continuous, vine_type='c-vine', trunc_level=None,
             do_refine=False):
         '''
         Fits the mixed vine to the given samples.
         '''
-        if vine_type != 'c-vine' or trunc or do_refine:
+        if vine_type != 'c-vine' or do_refine:
             raise NotImplementedError
         root = MixedVine._construct_c_vine(samples.shape[1])
-        root.fit(samples, is_continuous)
+        root.fit(samples, is_continuous, trunc_level)
         return MixedVine(root, vine_type)
 
     @staticmethod
