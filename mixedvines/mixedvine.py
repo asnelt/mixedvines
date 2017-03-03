@@ -155,7 +155,7 @@ class MixedVine(object):
             else:
                 input_u = self.input_layer.fit(samples, is_continuous)
                 truncate = trunc_level and samples.shape[1] \
-                        - len(self.input_indices) > trunc_level - 1
+                    - len(self.input_indices) > trunc_level - 1
                 output_u = np.zeros((samples.shape[0],
                                      len(self.input_indices)))
                 self.copulas = []
