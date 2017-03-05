@@ -119,7 +119,7 @@ class MixedVine(object):
     class VineLayer(object):
         '''
         This class represents a layer of a copula vine tree. A tree description
-        in layers is advantageous, because operations on the vine work in
+        in layers is advantageous, because most operations on the vine work in
         sweeps from layer to layer.
         '''
         def __init__(self, input_layer=None, input_indices=None,
@@ -140,6 +140,61 @@ class MixedVine(object):
             Determines whether the layer is the marginal layer.
             '''
             return not self.input_layer
+
+        def is_root_layer(self):
+            '''
+            Determines whether the layer is the output layer.
+            '''
+            return not self.output_layer
+
+        def _build_diagonal(self, last_index, u, v):
+            '''
+            '''
+            self._build_samples(last_index, u, v)
+            self._post_transform(u[:, last_index], v, last_index, 0)
+
+        def _post_transform(self, t, v, i, k):
+            '''
+            '''
+            if not self.is_marginal_layer():
+                t = self.input_layer._post_transform(t, v, i, k + 1)
+            u_sub = np.array([v[:, i], t]).T
+            return self.copulas[k].ccdf(u_sub)
+
+        def _build_samples(self, last_index, u, v):
+            '''
+            '''
+            self.input_layer._build_diagonal(last_index - 1, u, v)
+            u[:, last_index] = np.random.rand(u.shape[0])
+            layer = self
+            k = 0
+            while not layer.is_marginal_layer():
+                u_sub = np.array([v[:, last_index - k - 1],
+                                  u[:, last_index]]).T
+                u[:, last_index] = layer.copulas[k].ppcf(u_sub)
+                layer = layer.input_layer
+                k += 1
+
+        def rvs(self, size):
+            '''
+            Currently ignores input_indices. Works only for c-vine.
+            '''
+            if self.is_root_layer():
+                # Determine distribution dimension
+                layer = self
+                while not layer.is_marginal_layer():
+                    layer = layer.input_layer
+                dim = len(layer.marginals)
+                last_index = dim - 1
+                u = np.zeros(shape=[size, dim])
+                v = np.zeros(shape=[size, dim])
+                self._build_samples(last_index, u, v)
+                # Use marginals to transform dependent uniform samples
+                for i, marginal in enumerate(layer.marginals):
+                    u[:, i] = marginal.ppf(u[:, i])
+                return u
+            else:
+                return self.output_layer.rvs(size)
 
         def fit(self, samples, is_continuous, trunc_level=None):
             '''
@@ -191,7 +246,7 @@ class MixedVine(object):
         '''
         Generates random variates from the mixed vine.
         '''
-        raise NotImplementedError
+        return self.root.rvs(size)
 
     def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000):
         '''
@@ -224,7 +279,8 @@ class MixedVine(object):
         '''
         if vine_type != 'c-vine' or do_refine:
             raise NotImplementedError
-        root = MixedVine._construct_c_vine(samples.shape[1])
+        dim = samples.shape[1]
+        root = MixedVine._construct_c_vine(dim)
         root.fit(samples, is_continuous, trunc_level)
         return MixedVine(root, vine_type)
 
