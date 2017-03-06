@@ -147,37 +147,49 @@ class MixedVine(object):
             '''
             return not self.output_layer
 
-        def _build_diagonal(self, last_index, u, v):
+        def _build_cond(self, last, samples, cond):
             '''
+            Helper function for _build_samples. Builds conditional samples for
+            _build_samples.
             '''
-            self._build_samples(last_index, u, v)
-            self._post_transform(u[:, last_index], v, last_index, 0)
+            self._build_samples(last, samples, cond)
+            if last == 0:
+                cond[:, last] = samples[:, last]
+            else:
+                cond[:, last] = self._cond_ccdf(samples[:, last], cond, last)
 
-        def _post_transform(self, t, v, i, k):
+        def _cond_ccdf(self, sample, cond, cond_index, copula_index=0):
             '''
+            Helper function for _build_cond to generate a conditional sample.
             '''
-            if not self.is_marginal_layer():
-                t = self.input_layer._post_transform(t, v, i, k + 1)
-            u_sub = np.array([v[:, i], t]).T
-            return self.copulas[k].ccdf(u_sub)
+            if cond_index > 0:
+                sample = self.input_layer._cond_ccdf(sample, cond,
+                                                     cond_index - 1,
+                                                     copula_index + 1)
+                u = np.array([cond[:, cond_index], sample]).T
+            return self.copulas[copula_index].ccdf(u)
 
-        def _build_samples(self, last_index, u, v):
+        def _build_samples(self, last, samples, cond):
             '''
+            Helper function for rvs. Draws uniform samples from the vine tree,
+            populating samples up to index last.
             '''
-            self.input_layer._build_diagonal(last_index - 1, u, v)
-            u[:, last_index] = np.random.rand(u.shape[0])
+            if last > 0:
+                self.input_layer._build_cond(last - 1, samples, cond)
+            samples[:, last] = np.random.rand(samples.shape[0])
             layer = self
-            k = 0
+            copula_index = 0
             while not layer.is_marginal_layer():
-                u_sub = np.array([v[:, last_index - k - 1],
-                                  u[:, last_index]]).T
-                u[:, last_index] = layer.copulas[k].ppcf(u_sub)
+                u = np.array([cond[:, last - copula_index - 1],
+                              samples[:, last]]).T
+                samples[:, last] = layer.copulas[copula_index].ppcf(u)
                 layer = layer.input_layer
-                k += 1
+                copula_index += 1
 
         def rvs(self, size):
             '''
-            Currently ignores input_indices. Works only for c-vine.
+            Generates random variates from the mixed vine. Currently ignores
+            input_indices and thus works only for c-vine.
             '''
             if self.is_root_layer():
                 # Determine distribution dimension
@@ -185,10 +197,10 @@ class MixedVine(object):
                 while not layer.is_marginal_layer():
                     layer = layer.input_layer
                 dim = len(layer.marginals)
-                last_index = dim - 1
+                last = dim - 1
                 u = np.zeros(shape=[size, dim])
-                v = np.zeros(shape=[size, dim])
-                self._build_samples(last_index, u, v)
+                cond = np.zeros(shape=[size, dim])
+                self._build_samples(last, u, cond)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
                     u[:, i] = marginal.ppf(u[:, i])
