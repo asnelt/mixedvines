@@ -149,8 +149,8 @@ class MixedVine(object):
 
         def _build_cond(self, last, samples, cond):
             '''
-            Helper function for _build_samples. Builds conditional samples for
-            _build_samples.
+            Helper function for _build_samples. Builds conditional samples cond
+            up to index last for _build_samples.
             '''
             self._build_samples(last, samples, cond)
             if last == 0:
@@ -167,7 +167,7 @@ class MixedVine(object):
                                                      cond_index - 1,
                                                      copula_index + 1)
                 u = np.array([cond[:, cond_index], sample]).T
-            return self.copulas[copula_index].ccdf(u)
+            return self.copulas[copula_index].ccdf(u, axis=0)
 
         def _build_samples(self, last, samples, cond):
             '''
@@ -182,7 +182,7 @@ class MixedVine(object):
             while not layer.is_marginal_layer():
                 u = np.array([cond[:, last - copula_index - 1],
                               samples[:, last]]).T
-                samples[:, last] = layer.copulas[copula_index].ppcf(u)
+                samples[:, last] = layer.copulas[copula_index].ppcf(u, axis=0)
                 layer = layer.input_layer
                 copula_index += 1
 
