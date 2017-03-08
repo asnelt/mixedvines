@@ -232,7 +232,7 @@ class MixedVine(object):
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     # This propagation of continuity is specific for the c-vine
                     is_continuous[k] = is_continuous_in[j]
-                    logpdf = logpdf_in + logp[:, 0]
+                logpdf = logpdf_in + logp[:, 0]
             return (logpdf, logp, cdfp, cdfm, is_continuous)
 
         def build_cond(self, last, samples, cond):
