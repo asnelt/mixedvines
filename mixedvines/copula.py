@@ -104,11 +104,16 @@ class Copula(object):
         val = np.zeros(u.shape[0])
         # For 'ind' family, val remains at zero
         if self.family == 'gaussian':
-            x = norm.ppf(u)
-            val[inner] = 2 * self.theta * x[inner, 0] * x[inner, 1] \
-                - self.theta**2 * (x[inner, 0]**2 + x[inner, 1]**2)
-            val[inner] /= 2 * (1 - self.theta**2)
-            val[inner] -= np.log(1 - self.theta**2) / 2
+            if self.theta >= 1.0:
+                val[np.bitwise_and(inner, u[:, 0] == u[:, 1])] = np.inf
+            elif self.theta <= -1.0:
+                val[np.bitwise_and(inner, u[:, 0] == 1 - u[:, 1])] = np.inf
+            else:
+                x = norm.ppf(u)
+                val[inner] = 2 * self.theta * x[inner, 0] * x[inner, 1] \
+                    - self.theta**2 * (x[inner, 0]**2 + x[inner, 1]**2)
+                val[inner] /= 2 * (1 - self.theta**2)
+                val[inner] -= np.log(1 - self.theta**2) / 2
         elif self.family == 'clayton':
             if self.theta != 0:
                 val[inner] = np.log(1 + self.theta) \
@@ -329,7 +334,7 @@ class Copula(object):
                 return Copula(family, theta=None, rotation=rotation)
             elif family == 'gaussian':
                 initial_point = (0.0)
-                bnds = [(-1.0, 1.0)]
+                bnds = [(-1.0 + 1e-3, 1.0 - 1e-3)]
             elif family == 'clayton':
                 initial_point = (1.0)
                 bnds = [(1e-3, 20)]
@@ -347,7 +352,6 @@ class Copula(object):
 
             result = minimize(fun, initial_point, method='TNC', bounds=bnds)
             copula.theta = result.x
-            return copula
         else:
             # Also find best fitting family
             copulas = []
@@ -363,8 +367,8 @@ class Copula(object):
                 aic[i] = - 2 * np.sum(copula.logpdf(samples))
                 if copula.theta:
                     aic[i] += 2 * len(copula.theta)
-            best_copula = copulas[np.argmin(aic)]
-            return best_copula
+            copula = copulas[np.argmin(aic)]
+        return copula
 
     @staticmethod
     def _theta_cost(theta, samples, copula):
