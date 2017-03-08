@@ -35,38 +35,38 @@ class Marginal(object):
         self.rv_mixed = rv_mixed
         self.is_continuous = is_continuous
 
-    def logpdf(self, x):
+    def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
         '''
         if self.is_continuous:
-            return self.rv_mixed.logpdf(x)
+            return self.rv_mixed.logpdf(samples)
         else:
-            return self.rv_mixed.logpmf(x)
+            return self.rv_mixed.logpmf(samples)
 
-    def pdf(self, x):
+    def pdf(self, samples):
         '''
         Calculates the probability density function.
         '''
-        return np.exp(self.logpdf(x))
+        return np.exp(self.logpdf(samples))
 
-    def logcdf(self, x):
+    def logcdf(self, samples):
         '''
         Calculates the log of the cumulative distribution function.
         '''
-        return self.rv_mixed.logcdf(x)
+        return self.rv_mixed.logcdf(samples)
 
-    def cdf(self, x):
+    def cdf(self, samples):
         '''
         Calculates the cumulative distribution function.
         '''
-        return np.exp(self.logcdf(x))
+        return np.exp(self.logcdf(samples))
 
-    def ppf(self, q):
+    def ppf(self, samples):
         '''
         Calculates the inverse of the cumulative distribution function.
         '''
-        return self.rv_mixed.ppf(q)
+        return self.rv_mixed.ppf(samples)
 
     def rvs(self, size=1):
         '''
@@ -90,7 +90,7 @@ class Marginal(object):
         else:
             # Suitable discrete distributions
             options = [poisson, binom]
-            params = np.empty(len(options))
+            params = np.empty(len(options), dtype=object)
             # Fit Poisson parameter
             params[options.index(poisson)] = [np.mean(samples)]
             # Fit binomial parameters
@@ -147,35 +147,125 @@ class MixedVine(object):
             '''
             return not self.output_layer
 
-        def _build_cond(self, last, samples, cond):
+        def logpdf(self, samples):
             '''
-            Helper function for _build_samples. Builds conditional samples cond
-            up to index last for _build_samples.
+            Calculates the log of the probability density function.
             '''
-            self._build_samples(last, samples, cond)
+            if self.is_root_layer():
+                res = self.densities(samples)
+                return res[0]
+            else:
+                return self.output_layer.logpdf(samples)
+
+        def densities(self, samples):
+            '''
+            Computes densities and cumulative distribution functions layer by
+            layer.
+            '''
+            if self.is_marginal_layer():
+                # Evaluate marginal densities
+                logp = np.zeros(samples.shape)
+                cdfp = np.zeros(samples.shape)
+                cdfm = np.zeros(samples.shape)
+                is_continuous = np.zeros(len(self.marginals), dtype=bool)
+                for k, marginal in enumerate(self.marginals):
+                    is_continuous[k] = marginal.is_continuous
+                    cdfp[:, k] = marginal.cdf(samples[:, k])
+                    if marginal.is_continuous:
+                        logp[:, k] = marginal.logpdf(samples[:, k])
+                    else:
+                        cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
+                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                logpdf = logp[:, 0]
+            else:
+                # Propagate samples to input_layer
+                (logpdf_in, logp_in, cdfp_in, cdfm_in, is_continuous_in) \
+                    = self.input_layer.densities(samples)
+                logp = np.zeros((samples.shape[0], len(self.copulas)))
+                cdfp = np.zeros((samples.shape[0], len(self.copulas)))
+                cdfm = np.zeros((samples.shape[0], len(self.copulas)))
+                is_continuous = np.zeros(len(self.copulas), dtype=bool)
+                for k, copula in enumerate(self.copulas):
+                    i = self.input_indices[k][0]
+                    j = self.input_indices[k][1]
+                    if is_continuous_in[i] and is_continuous_in[j]:
+                        cdfp[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
+                                                           cdfp_in[:, j]]).T,
+                                                 axis=0)
+                        log_c = copula.logpdf(np.array([cdfp_in[:, i],
+                                                        cdfp_in[:, j]]).T)
+                        logp[:, k] = log_c + logp_in[:, j]
+                    elif not is_continuous_in[i] and is_continuous_in[j]:
+                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                                                    cdfp_in[:, j]]).T)
+                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                                                    cdfp_in[:, j]]).T)
+                        cdfp[:, k] = np.exp(np.log(cdf1 - cdf2)
+                                            - logp_in[:, i])
+                        pdf1 = copula.ccdf(np.array([cdfp_in[:, i],
+                                                     cdfp_in[:, j]]).T)
+                        pdf2 = copula.ccdf(np.array([cdfm_in[:, i],
+                                                     cdfp_in[:, j]]).T)
+                        logp[:, k] = np.log(pdf1 - pdf2) + logp_in[:, j] \
+                            - logp_in[:, i]
+                    elif is_continuous_in[i] and not is_continuous_in[j]:
+                        cdfp[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
+                                                           cdfp_in[:, j]]).T,
+                                                 axis=0)
+                        cdfm[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
+                                                           cdfm_in[:, j]]).T,
+                                                 axis=0)
+                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                    else:
+                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                                                    cdfp_in[:, j]]).T)
+                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                                                    cdfp_in[:, j]]).T)
+                        cdfp[:, k] = np.exp(np.log(cdf1 - cdf2)
+                                            - logp_in[:, i])
+                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                                                    cdfm_in[:, j]]).T)
+                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                                                    cdfm_in[:, j]]).T)
+                        cdfm[:, k] = np.exp(np.log(cdf1 - cdf2)
+                                            - logp_in[:, i])
+                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                    # This propagation of continuity is specific for the c-vine
+                    is_continuous[k] = is_continuous_in[j]
+                    logpdf = logpdf_in + logp[:, 0]
+            return (logpdf, logp, cdfp, cdfm, is_continuous)
+
+        def build_cond(self, last, samples, cond):
+            '''
+            Helper function for build_samples. Builds conditional samples cond
+            up to index last for build_samples.
+            '''
+            self.build_samples(last, samples, cond)
             if last == 0:
                 cond[:, last] = samples[:, last]
             else:
-                cond[:, last] = self._cond_ccdf(samples[:, last], cond, last)
+                cond[:, last] = self.cond_ccdf(samples[:, last], cond, last)
 
-        def _cond_ccdf(self, sample, cond, cond_index, copula_index=0):
+        def cond_ccdf(self, sample, cond, cond_index, copula_index=0):
             '''
-            Helper function for _build_cond to generate a conditional sample.
+            Helper function for build_cond to generate a conditional sample.
             '''
             if cond_index > 0:
-                sample = self.input_layer._cond_ccdf(sample, cond,
-                                                     cond_index - 1,
-                                                     copula_index + 1)
+                sample = self.input_layer.cond_ccdf(sample, cond,
+                                                    cond_index - 1,
+                                                    copula_index + 1)
                 u = np.array([cond[:, cond_index], sample]).T
-            return self.copulas[copula_index].ccdf(u, axis=0)
+                return self.copulas[copula_index].ccdf(u, axis=0)
+            else:
+                return sample
 
-        def _build_samples(self, last, samples, cond):
+        def build_samples(self, last, samples, cond):
             '''
             Helper function for rvs. Draws uniform samples from the vine tree,
             populating samples up to index last.
             '''
             if last > 0:
-                self.input_layer._build_cond(last - 1, samples, cond)
+                self.input_layer.build_cond(last - 1, samples, cond)
             samples[:, last] = np.random.rand(samples.shape[0])
             layer = self
             copula_index = 0
@@ -200,7 +290,7 @@ class MixedVine(object):
                 last = dim - 1
                 u = np.zeros(shape=[size, dim])
                 cond = np.zeros(shape=[size, dim])
-                self._build_samples(last, u, cond)
+                self.build_samples(last, u, cond)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
                     u[:, i] = marginal.ppf(u[:, i])
@@ -242,17 +332,17 @@ class MixedVine(object):
         self.root = root
         self.vine_type = vine_type
 
-    def logpdf(self, x):
+    def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
         '''
-        raise NotImplementedError
+        return self.root.logpdf(samples)
 
-    def pdf(self, x):
+    def pdf(self, samples):
         '''
         Calculates the probability density function.
         '''
-        return np.exp(self.logpdf(x))
+        return np.exp(self.logpdf(samples))
 
     def rvs(self, size=1):
         '''
@@ -267,21 +357,21 @@ class MixedVine(object):
         # Gaussian confidence interval for sem_tol and level alpha
         conf = norm.ppf(1 - alpha)
         sem = np.inf
-        h = 0.0
+        ent = 0.0
         var_sum = 0.0
         k = 0
         while sem >= sem_tol:
             # Generate samples
-            x = self.rvs(mc_size)
-            logp = self.logpdf(x)
+            samples = self.rvs(mc_size)
+            logp = self.logpdf(samples)
             log2p = logp[np.isfinite(logp)] / np.log(2)
             k += 1
             # Monte-Carlo estimate of entropy
-            h += (-np.mean(log2p) - h) / k
+            ent += (-np.mean(log2p) - ent) / k
             # Estimate standard error
-            var_sum += np.sum((-log2p - h) ** 2)
+            var_sum += np.sum((-log2p - ent) ** 2)
             sem = conf * np.sqrt(var_sum / (k * mc_size * (k * mc_size - 1)))
-        return h, sem
+        return ent, sem
 
     @staticmethod
     def fit(samples, is_continuous, vine_type='c-vine', trunc_level=None,
@@ -289,12 +379,15 @@ class MixedVine(object):
         '''
         Fits the mixed vine to the given samples.
         '''
-        if vine_type != 'c-vine' or do_refine:
+        if vine_type != 'c-vine':
             raise NotImplementedError
         dim = samples.shape[1]
         root = MixedVine._construct_c_vine(dim)
         root.fit(samples, is_continuous, trunc_level)
-        return MixedVine(root, vine_type)
+        vine = MixedVine(root, vine_type)
+        if do_refine:
+            raise NotImplementedError
+        return vine
 
     @staticmethod
     def _construct_c_vine(dim):
