@@ -18,7 +18,7 @@
 This module implements a copula vine model with mixed marginals.
 '''
 from __future__ import division
-from scipy.stats import norm, gamma, poisson, binom
+from scipy.stats import norm, gamma, poisson, binom, nbinom
 import numpy as np
 from mixedvines.copula import Copula
 
@@ -79,29 +79,38 @@ class Marginal(object):
         '''
         Fits a distribution to the given samples.
         '''
-        # Fit parameters
+        # Mean and variance
+        mean = np.mean(samples)
+        var = np.var(samples)
+        # Set suitable distributions
         if is_continuous:
-            # Suitable continuous distributions
             if np.any(samples <= 0):
                 options = [norm]
             else:
                 options = [norm, gamma]
-            params = [dist.fit(samples) for dist in options]
         else:
-            # Suitable discrete distributions
-            options = [poisson, binom]
-            params = np.empty(len(options), dtype=object)
-            # Fit Poisson parameter
-            params[options.index(poisson)] = [np.mean(samples)]
-            # Fit binomial parameters
-            binom_n = np.max(samples)
-            binom_p = np.sum(samples) / (binom_n * len(samples))
-            params[options.index(binom)] = [binom_n, binom_p]
-        # Construct marginals
-        marginals = []
+            if var > mean:
+                options = [poisson, binom, nbinom]
+            else:
+                options = [poisson, binom]
+        params = np.empty(len(options), dtype=object)
+        marginals = np.empty(len(options), dtype=object)
+        # Fit parameters and construct marginals
         for i, dist in enumerate(options):
+            if dist == poisson:
+                params[i] = [mean]
+            elif dist == binom:
+                param_n = np.max(samples)
+                param_p = np.sum(samples) / (param_n * len(samples))
+                params[i] = [param_n, param_p]
+            elif dist == nbinom:
+                param_n = mean * mean / (var - mean)
+                param_p = mean / var
+                params[i] = [param_n, param_p]
+            else:
+                params[i] = dist.fit(samples)
             rv_mixed = dist(*params[i])
-            marginals.append(Marginal(rv_mixed, is_continuous))
+            marginals[i] = Marginal(rv_mixed, is_continuous)
         # Calculate Akaike information criterion
         aic = np.zeros(len(options))
         for i, marginal in enumerate(marginals):
@@ -196,17 +205,17 @@ class MixedVine(object):
                                                         cdfp_in[:, j]]).T)
                         logp[:, k] = log_c + logp_in[:, j]
                     elif not is_continuous_in[i] and is_continuous_in[j]:
-                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
                                                     cdfp_in[:, j]]).T)
-                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
                                                     cdfp_in[:, j]]).T)
-                        cdfp[:, k] = np.exp(np.log(cdf1 - cdf2)
+                        cdfp[:, k] = np.exp(np.log(cdf0 - cdf1)
                                             - logp_in[:, i])
-                        pdf1 = copula.ccdf(np.array([cdfp_in[:, i],
+                        pdf0 = copula.ccdf(np.array([cdfp_in[:, i],
                                                      cdfp_in[:, j]]).T)
-                        pdf2 = copula.ccdf(np.array([cdfm_in[:, i],
+                        pdf1 = copula.ccdf(np.array([cdfm_in[:, i],
                                                      cdfp_in[:, j]]).T)
-                        logp[:, k] = np.log(pdf1 - pdf2) + logp_in[:, j] \
+                        logp[:, k] = np.log(pdf0 - pdf1) + logp_in[:, j] \
                             - logp_in[:, i]
                     elif is_continuous_in[i] and not is_continuous_in[j]:
                         cdfp[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
@@ -217,17 +226,17 @@ class MixedVine(object):
                                                  axis=0)
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     else:
-                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
                                                     cdfp_in[:, j]]).T)
-                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
                                                     cdfp_in[:, j]]).T)
-                        cdfp[:, k] = np.exp(np.log(cdf1 - cdf2)
+                        cdfp[:, k] = np.exp(np.log(cdf0 - cdf1)
                                             - logp_in[:, i])
-                        cdf1 = copula.cdf(np.array([cdfp_in[:, i],
+                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
                                                     cdfm_in[:, j]]).T)
-                        cdf2 = copula.cdf(np.array([cdfm_in[:, i],
+                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
                                                     cdfm_in[:, j]]).T)
-                        cdfm[:, k] = np.exp(np.log(cdf1 - cdf2)
+                        cdfm[:, k] = np.exp(np.log(cdf0 - cdf1)
                                             - logp_in[:, i])
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     # This propagation of continuity is specific for the c-vine
