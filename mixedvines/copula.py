@@ -334,23 +334,21 @@ class Copula(object):
                 return Copula(family, theta=None, rotation=rotation)
             elif family == 'gaussian':
                 initial_point = (0.0)
-                bnds = [(-1.0 + 1e-3, 1.0 - 1e-3)]
             elif family == 'clayton':
                 initial_point = (1.0)
-                bnds = [(1e-3, 20)]
             elif family == 'frank':
                 initial_point = (0.0)
-                bnds = [(-20, 20)]
             # Optimize copula parameters
+            bnds = Copula.theta_bounds(family)
             copula = Copula(family, theta=initial_point, rotation=rotation)
 
-            def fun(theta):
+            def cost(theta):
                 '''
                 Calculates the cost of a given theta parameter.
                 '''
                 return Copula._theta_cost(theta, samples, copula)
 
-            result = minimize(fun, initial_point, method='TNC', bounds=bnds)
+            result = minimize(cost, initial_point, method='TNC', bounds=bnds)
             copula.theta = result.x
         else:
             # Also find best fitting family
@@ -369,6 +367,21 @@ class Copula(object):
                     aic[i] += 2 * len(copula.theta)
             copula = copulas[np.argmin(aic)]
         return copula
+
+    @staticmethod
+    def theta_bounds(family):
+        '''
+        Bounds for theta parameters.
+        '''
+        if family == 'gaussian':
+            bnds = [(-1.0 + 1e-3, 1.0 - 1e-3)]
+        elif family == 'clayton':
+            bnds = [(1e-3, 20)]
+        elif family == 'frank':
+            bnds = [(-20, 20)]
+        else:
+            bnds = []
+        return bnds
 
     @staticmethod
     def _theta_cost(theta, samples, copula):

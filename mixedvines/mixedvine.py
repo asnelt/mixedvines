@@ -18,6 +18,7 @@
 This module implements a copula vine model with mixed marginals.
 '''
 from __future__ import division
+from scipy.optimize import minimize
 from scipy.stats import norm, gamma, poisson, binom, nbinom
 import numpy as np
 from mixedvines.copula import Copula
@@ -334,6 +335,45 @@ class MixedVine(object):
                     output_u[:, i] = next_copula.ccdf(input_u[:, i_ind])
             return output_u
 
+        def get_all_params(self):
+            '''
+            Constructs high dimensional vector containing all copula
+            parameters.
+            '''
+            if self.is_marginal_layer():
+                params = []
+            else:
+                params = self.input_layer.get_all_params()
+                for copula in self.copulas:
+                    for param in copula.theta:
+                        params.append(param)
+            return params
+
+        def set_all_params(self, params):
+            '''
+            Sets all copula parameters to the values stored in params.
+            '''
+            if not self.is_marginal_layer():
+                self.input_layer.set_all_params(params)
+                if self.copulas:
+                    for i in range(len(self.copulas)):
+                        if self.copulas[i].theta:
+                            for j in range(len(self.copulas[i].theta)):
+                                self.copulas[i].theta[j] = params.pop(0)
+
+        def get_all_bounds(self):
+            '''
+            Collects the bounds of all copula parameters.
+            '''
+            if self.is_marginal_layer():
+                bnds = []
+            else:
+                bnds = self.input_layer.get_all_bounds()
+                for copula in self.copulas:
+                    for bnd in Copula.theta_bounds(copula.family):
+                        bnds.append(bnd)
+            return bnds
+
     def __init__(self, root=None, vine_type='c-vine'):
         '''
         Constructs a mixed vine model from a VineLayer root.
@@ -395,7 +435,18 @@ class MixedVine(object):
         root.fit(samples, is_continuous, trunc_level)
         vine = MixedVine(root, vine_type)
         if do_refine:
-            raise NotImplementedError
+            # Refine copula parameters
+            initial_point = root.get_all_params()
+            bnds = root.get_all_bounds()
+
+            def cost(params):
+                '''
+                Calculates the cost of a given set of copula parameters.
+                '''
+                return MixedVine._params_cost(params, samples, vine)
+
+            result = minimize(cost, initial_point, method='TNC', bounds=bnds)
+            vine.root.set_all_params(result.x)
         return vine
 
     @staticmethod
@@ -414,3 +465,11 @@ class MixedVine(object):
                                         input_indices=input_indices)
         root = layer
         return root
+
+    @staticmethod
+    def _params_cost(params, samples, vine):
+        '''
+        Helper function for copula parameter optimization.
+        '''
+        vine.root.set_all_params(params)
+        return -np.sum(vine.logpdf(samples))
