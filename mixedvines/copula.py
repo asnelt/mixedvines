@@ -74,87 +74,95 @@ class Copula(object):
             raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
-    def _crop_input(u):
+    def _crop_input(samples):
         '''
         Crops the input to the unit hypercube.
         '''
-        u[u < 0] = 0
-        u[u > 1] = 1
+        samples[samples < 0] = 0
+        samples[samples > 1] = 1
+        return samples
 
-    def _rotate_input(self, u):
+    def _rotate_input(self, samples):
         '''
         Preprocesses the input to account for the copula rotation.
         '''
         if self.rotation == '90°':
-            u[:, 1] = 1 - u[:, 1]
+            samples[:, 1] = 1 - samples[:, 1]
         elif self.rotation == '180°':
-            u[:, :] = 1 - u[:, :]
+            samples[:, :] = 1 - samples[:, :]
         elif self.rotation == '270°':
-            u[:, 0] = 1 - u[:, 0]
+            samples[:, 0] = 1 - samples[:, 0]
+        return samples
 
-    def logpdf(self, u):
+    def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
         '''
-        u = np.copy(np.asarray(u))
-        self._crop_input(u)
-        self._rotate_input(u)
-        inner = np.all(np.bitwise_and(u != 0.0, u != 1.0), axis=1)
+        samples = np.copy(np.asarray(samples))
+        samples = self._crop_input(samples)
+        samples = self._rotate_input(samples)
+        inner = np.all(np.bitwise_and(samples != 0.0, samples != 1.0), axis=1)
         outer = np.invert(inner)
-        val = np.zeros(u.shape[0])
+        val = np.zeros(samples.shape[0])
         # For 'ind' family, val remains at zero
         if self.family == 'gaussian':
             if self.theta >= 1.0:
-                val[np.bitwise_and(inner, u[:, 0] == u[:, 1])] = np.inf
+                val[np.bitwise_and(inner,
+                                   samples[:, 0] == samples[:, 1])] = np.inf
             elif self.theta <= -1.0:
-                val[np.bitwise_and(inner, u[:, 0] == 1 - u[:, 1])] = np.inf
+                val[np.bitwise_and(inner,
+                                   samples[:, 0] == 1 - samples[:, 1])] \
+                    = np.inf
             else:
-                x = norm.ppf(u)
-                val[inner] = 2 * self.theta * x[inner, 0] * x[inner, 1] \
-                    - self.theta**2 * (x[inner, 0]**2 + x[inner, 1]**2)
+                nrv = norm.ppf(samples)
+                val[inner] = 2 * self.theta * nrv[inner, 0] * nrv[inner, 1] \
+                    - self.theta**2 * (nrv[inner, 0]**2 + nrv[inner, 1]**2)
                 val[inner] /= 2 * (1 - self.theta**2)
                 val[inner] -= np.log(1 - self.theta**2) / 2
         elif self.family == 'clayton':
             if self.theta != 0:
                 val[inner] = np.log(1 + self.theta) \
                     + (-1 - self.theta) \
-                    * (np.log(u[inner, 0]) + np.log(u[inner, 1])) \
-                    + (-1 / self.theta-2) * np.log(u[inner, 0]**(-self.theta)
-                                                   + u[inner, 1]**(-self.theta)
-                                                   - 1)
+                    * (np.log(samples[inner, 0])
+                       + np.log(samples[inner, 1])) \
+                    + (-1 / self.theta-2) \
+                    * np.log(samples[inner, 0]**(-self.theta)
+                             + samples[inner, 1]**(-self.theta) - 1)
         elif self.family == 'frank':
             if self.theta != 0:
                 val[inner] = np.log(-self.theta * np.expm1(-self.theta)
                                     * np.exp(-self.theta
-                                             * (u[inner, 0] + u[inner, 1]))
+                                             * (samples[inner, 0]
+                                                + samples[inner, 1]))
                                     / (np.expm1(-self.theta)
-                                       + np.expm1(-self.theta * u[inner, 0])
-                                       * np.expm1(-self.theta * u[inner, 1]))
-                                    ** 2)
+                                       + np.expm1(-self.theta
+                                                  * samples[inner, 0])
+                                       * np.expm1(-self.theta
+                                                  * samples[inner, 1])) ** 2)
         # Assign zero mass to border
         val[outer] = -np.inf
         return val
 
-    def pdf(self, u):
+    def pdf(self, samples):
         '''
         Calculates the probability density function.
         '''
-        return np.exp(self.logpdf(u))
+        return np.exp(self.logpdf(samples))
 
-    def logcdf(self, u):
+    def logcdf(self, samples):
         '''
         Calculates the log of the cumulative distribution function.
         '''
-        u = np.copy(np.asarray(u))
-        self._crop_input(u)
-        self._rotate_input(u)
+        samples = np.copy(np.asarray(samples))
+        samples = self._crop_input(samples)
+        samples = self._rotate_input(samples)
         if self.family == 'ind':
             old_settings = np.seterr(divide='ignore')
-            val = np.sum(np.log(u), axis=1)
+            val = np.sum(np.log(samples), axis=1)
             np.seterr(**old_settings)
         elif self.family == 'gaussian':
             lower = np.full(2, -np.inf)
-            upper = norm.ppf(u)
+            upper = norm.ppf(samples)
             limit_flags = np.zeros(2)
 
             def func1d(upper1d):
@@ -166,55 +174,59 @@ class Copula(object):
 
             val = np.apply_along_axis(func1d, -1, upper)
             val = np.log(val)
-            val[np.any(u == 0.0, axis=1)] = -np.inf
-            val[u[:, 0] == 1.0] = np.log(u[u[:, 0] == 1.0, 1])
-            val[u[:, 1] == 1.0] = np.log(u[u[:, 1] == 1.0, 0])
+            val[np.any(samples == 0.0, axis=1)] = -np.inf
+            val[samples[:, 0] == 1.0] \
+                = np.log(samples[samples[:, 0] == 1.0, 1])
+            val[samples[:, 1] == 1.0] \
+                = np.log(samples[samples[:, 1] == 1.0, 0])
         elif self.family == 'clayton':
             if self.theta == 0:
-                val = np.sum(np.log(u), axis=1)
+                val = np.sum(np.log(samples), axis=1)
             else:
                 old_settings = np.seterr(divide='ignore')
                 val = (-1 / self.theta) \
-                    * np.log(np.maximum(u[:, 0]**(-self.theta)
-                                        + u[:, 1]**(-self.theta) - 1, 0))
+                    * np.log(np.maximum(samples[:, 0]**(-self.theta)
+                                        + samples[:, 1]**(-self.theta) - 1,
+                                        0))
                 np.seterr(**old_settings)
         elif self.family == 'frank':
             if self.theta == 0:
-                val = np.sum(np.log(u), axis=1)
+                val = np.sum(np.log(samples), axis=1)
             else:
                 old_settings = np.seterr(divide='ignore')
-                val = np.log(-np.log1p(np.expm1(-self.theta * u[:, 0])
-                                       * np.expm1(-self.theta * u[:, 1])
+                val = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
+                                       * np.expm1(-self.theta * samples[:, 1])
                                        / (np.expm1(-self.theta)))) \
                     - np.log(self.theta)
                 np.seterr(**old_settings)
         # Transform according to rotation, but take _rotate_input into account
         if self.rotation == '90°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log(u[:, 0] - np.exp(val))
+            val = np.log(samples[:, 0] - np.exp(val))
             np.seterr(**old_settings)
         elif self.rotation == '180°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log((1 - u[:, 0]) + (1 - u[:, 1]) - 1.0 + np.exp(val))
+            val = np.log((1 - samples[:, 0]) + (1 - samples[:, 1]) - 1.0
+                         + np.exp(val))
             np.seterr(**old_settings)
         elif self.rotation == '270°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log(u[:, 1] - np.exp(val))
+            val = np.log(samples[:, 1] - np.exp(val))
             np.seterr(**old_settings)
         return val
 
-    def cdf(self, u):
+    def cdf(self, samples):
         '''
         Calculates the cumulative distribution function.
         '''
-        return np.exp(self.logcdf(u))
+        return np.exp(self.logcdf(samples))
 
-    def ccdf(self, u, axis=1):
+    def ccdf(self, samples, axis=1):
         '''
         Calculates the conditional cumulative distribution function.
         '''
-        u = np.copy(np.asarray(u))
-        self._crop_input(u)
+        samples = np.copy(np.asarray(samples))
+        samples = self._crop_input(samples)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -223,51 +235,52 @@ class Copula(object):
                     self.rotation = '270°'
                 elif self.rotation == '270°':
                     self.rotation = '90°'
-                val = self.ccdf(u[:, [1, 0]], axis=1)
+                val = self.ccdf(samples[:, [1, 0]], axis=1)
             finally:
                 # Recover original rotation
                 self.rotation = rotation
             return val
         elif axis == 1:
-            self._rotate_input(u)
+            samples = self._rotate_input(samples)
             if self.family == 'ind':
-                val = u[:, 0]
+                val = samples[:, 0]
             elif self.family == 'gaussian':
-                x = norm.ppf(u)
-                val = norm.cdf((x[:, 0] - self.theta * x[:, 1])
+                nrv = norm.ppf(samples)
+                val = norm.cdf((nrv[:, 0] - self.theta * nrv[:, 1])
                                / np.sqrt(1 - self.theta**2))
             elif self.family == 'clayton':
                 if self.theta == 0:
-                    val = u[:, 0]
+                    val = samples[:, 0]
                 else:
-                    val = np.zeros(u.shape[0])
-                    gtz = np.all(u > 0.0, axis=1)
-                    val[gtz] = np.maximum(u[gtz, 1]**(-1 - self.theta)
-                                          * (u[gtz, 0]**(-self.theta)
-                                             + u[gtz, 1]**(-self.theta) - 1)
+                    val = np.zeros(samples.shape[0])
+                    gtz = np.all(samples > 0.0, axis=1)
+                    val[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
+                                          * (samples[gtz, 0]**(-self.theta)
+                                             + samples[gtz, 1]**(-self.theta)
+                                             - 1)
                                           ** (-1 - 1 / self.theta), 0)
             elif self.family == 'frank':
                 if self.theta == 0:
-                    val = u[:, 0]
+                    val = samples[:, 0]
                 else:
-                    val = np.exp(-self.theta * u[:, 1]) \
-                            * np.expm1(-self.theta * u[:, 0]) \
+                    val = np.exp(-self.theta * samples[:, 1]) \
+                            * np.expm1(-self.theta * samples[:, 0]) \
                             / (np.expm1(-self.theta)
-                               + np.expm1(-self.theta * u[:, 0])
-                               * np.expm1(-self.theta * u[:, 1]))
+                               + np.expm1(-self.theta * samples[:, 0])
+                               * np.expm1(-self.theta * samples[:, 1]))
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
         else:
             raise ValueError("axis must be in [0, 1].")
 
-    def ppcf(self, u, axis=1):
+    def ppcf(self, samples, axis=1):
         '''
         Calculates the inverse of the copula conditional cumulative
         distribution function.
         '''
-        u = np.copy(np.asarray(u))
-        self._crop_input(u)
+        samples = np.copy(np.asarray(samples))
+        samples = self._crop_input(samples)
         if axis == 0:
             # Temporarily change rotation
             rotation = self.rotation
@@ -276,37 +289,40 @@ class Copula(object):
                     self.rotation = '270°'
                 elif self.rotation == '270°':
                     self.rotation = '90°'
-                val = self.ppcf(u[:, [1, 0]], axis=1)
+                val = self.ppcf(samples[:, [1, 0]], axis=1)
             finally:
                 # Recover original rotation
                 self.rotation = rotation
             return val
         elif axis == 1:
-            self._rotate_input(u)
+            samples = self._rotate_input(samples)
             if self.family == 'ind':
-                val = u[:, 0]
+                val = samples[:, 0]
             elif self.family == 'gaussian':
-                x = norm.ppf(u)
-                val = norm.cdf(x[:, 0] * np.sqrt(1 - self.theta**2)
-                               + self.theta * x[:, 1])
+                nrv = norm.ppf(samples)
+                val = norm.cdf(nrv[:, 0] * np.sqrt(1 - self.theta**2)
+                               + self.theta * nrv[:, 1])
             elif self.family == 'clayton':
                 if self.theta == 0:
-                    val = u[:, 0]
+                    val = samples[:, 0]
                 else:
-                    val = np.zeros(u.shape[0])
-                    gtz = np.all(u > 0.0, axis=1)
-                    val[gtz] = (1 - u[gtz, 1]**(-self.theta)
-                                + (u[gtz, 0] * (u[gtz, 1]**(1 + self.theta)))
+                    val = np.zeros(samples.shape[0])
+                    gtz = np.all(samples > 0.0, axis=1)
+                    val[gtz] = (1 - samples[gtz, 1]**(-self.theta)
+                                + (samples[gtz, 0]
+                                   * (samples[gtz, 1]**(1 + self.theta)))
                                 ** (-self.theta / (1 + self.theta))) \
                         ** (-1 / self.theta)
             elif self.family == 'frank':
                 if self.theta == 0:
-                    val = u[:, 0]
+                    val = samples[:, 0]
                 else:
-                    val = -np.log1p(u[:, 0] * np.expm1(-self.theta)
-                                    / (np.exp(-self.theta * u[:, 1]) - u[:, 0]
-                                       * np.expm1(-self.theta * u[:, 1]))) \
-                          / self.theta
+                    val = -np.log1p(samples[:, 0] * np.expm1(-self.theta)
+                                    / (np.exp(-self.theta * samples[:, 1])
+                                       - samples[:, 0]
+                                       * np.expm1(-self.theta
+                                                  * samples[:, 1]))) \
+                        / self.theta
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
             return val
