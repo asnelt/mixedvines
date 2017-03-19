@@ -94,6 +94,21 @@ class Copula(object):
             samples[:, 0] = 1 - samples[:, 0]
         return samples
 
+    def _axis_rotate(self, samples, axis):
+        '''
+        Changes rotation and samples such that axis == 0 corresponds to
+        axis == 1.
+        '''
+        if axis == 0:
+            if self.rotation == '90°':
+                self.rotation = '270°'
+            elif self.rotation == '270°':
+                self.rotation = '90°'
+            samples = samples[:, [1, 0]]
+        elif axis != 1:
+            raise ValueError("axis must be in [0, 1].")
+        return samples
+
     def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
@@ -227,20 +242,10 @@ class Copula(object):
         '''
         samples = np.copy(np.asarray(samples))
         samples = self._crop_input(samples)
-        if axis == 0:
-            # Temporarily change rotation
-            rotation = self.rotation
-            try:
-                if self.rotation == '90°':
-                    self.rotation = '270°'
-                elif self.rotation == '270°':
-                    self.rotation = '90°'
-                val = self.ccdf(samples[:, [1, 0]], axis=1)
-            finally:
-                # Recover original rotation
-                self.rotation = rotation
-            return val
-        elif axis == 1:
+        rotation = self.rotation
+        try:
+            # Temporarily change rotation according to axis
+            samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
             if self.family == 'ind':
                 val = samples[:, 0]
@@ -270,9 +275,10 @@ class Copula(object):
                                * np.expm1(-self.theta * samples[:, 1]))
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
-            return val
-        else:
-            raise ValueError("axis must be in [0, 1].")
+        finally:
+            # Recover original rotation
+            self.rotation = rotation
+        return val
 
     def ppcf(self, samples, axis=1):
         '''
@@ -281,20 +287,10 @@ class Copula(object):
         '''
         samples = np.copy(np.asarray(samples))
         samples = self._crop_input(samples)
-        if axis == 0:
+        rotation = self.rotation
+        try:
             # Temporarily change rotation
-            rotation = self.rotation
-            try:
-                if self.rotation == '90°':
-                    self.rotation = '270°'
-                elif self.rotation == '270°':
-                    self.rotation = '90°'
-                val = self.ppcf(samples[:, [1, 0]], axis=1)
-            finally:
-                # Recover original rotation
-                self.rotation = rotation
-            return val
-        elif axis == 1:
+            samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
             if self.family == 'ind':
                 val = samples[:, 0]
@@ -325,9 +321,10 @@ class Copula(object):
                         / self.theta
             if self.rotation == '180°' or self.rotation == '270°':
                 val = 1.0 - val
-            return val
-        else:
-            raise ValueError("axis must be in [0, 1].")
+        finally:
+            # Recover orginial rotation
+            self.rotation = rotation
+        return val
 
     def rvs(self, size=1):
         '''
