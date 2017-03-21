@@ -205,7 +205,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Log of the probability density function evaluated at `samples`.
         '''
         samples = np.copy(np.asarray(samples))
@@ -213,25 +213,26 @@ class Copula(object):
         samples = self._rotate_input(samples)
         inner = np.all(np.bitwise_and(samples != 0.0, samples != 1.0), axis=1)
         outer = np.invert(inner)
-        val = np.zeros(samples.shape[0])
+        vals = np.zeros(samples.shape[0])
         # For 'ind' family, val remains at zero
         if self.family == 'gaussian':
             if self.theta >= 1.0:
-                val[np.bitwise_and(inner,
-                                   samples[:, 0] == samples[:, 1])] = np.inf
+                vals[np.bitwise_and(inner,
+                                    samples[:, 0] == samples[:, 1])] = np.inf
             elif self.theta <= -1.0:
-                val[np.bitwise_and(inner,
-                                   samples[:, 0] == 1 - samples[:, 1])] \
+                vals[np.bitwise_and(inner,
+                                    samples[:, 0] == 1 - samples[:, 1])] \
                     = np.inf
             else:
-                nrv = norm.ppf(samples)
-                val[inner] = 2 * self.theta * nrv[inner, 0] * nrv[inner, 1] \
-                    - self.theta**2 * (nrv[inner, 0]**2 + nrv[inner, 1]**2)
-                val[inner] /= 2 * (1 - self.theta**2)
-                val[inner] -= np.log(1 - self.theta**2) / 2
+                nrvs = norm.ppf(samples)
+                vals[inner] = 2 * self.theta * nrvs[inner, 0] \
+                    * nrvs[inner, 1] - self.theta**2 \
+                    * (nrvs[inner, 0]**2 + nrvs[inner, 1]**2)
+                vals[inner] /= 2 * (1 - self.theta**2)
+                vals[inner] -= np.log(1 - self.theta**2) / 2
         elif self.family == 'clayton':
             if self.theta != 0:
-                val[inner] = np.log(1 + self.theta) \
+                vals[inner] = np.log(1 + self.theta) \
                     + (-1 - self.theta) \
                     * (np.log(samples[inner, 0])
                        + np.log(samples[inner, 1])) \
@@ -240,18 +241,18 @@ class Copula(object):
                              + samples[inner, 1]**(-self.theta) - 1)
         elif self.family == 'frank':
             if self.theta != 0:
-                val[inner] = np.log(-self.theta * np.expm1(-self.theta)
-                                    * np.exp(-self.theta
-                                             * (samples[inner, 0]
-                                                + samples[inner, 1]))
-                                    / (np.expm1(-self.theta)
-                                       + np.expm1(-self.theta
-                                                  * samples[inner, 0])
-                                       * np.expm1(-self.theta
-                                                  * samples[inner, 1])) ** 2)
+                vals[inner] = np.log(-self.theta * np.expm1(-self.theta)
+                                     * np.exp(-self.theta
+                                              * (samples[inner, 0]
+                                                 + samples[inner, 1]))
+                                     / (np.expm1(-self.theta)
+                                        + np.expm1(-self.theta
+                                                   * samples[inner, 0])
+                                        * np.expm1(-self.theta
+                                                   * samples[inner, 1])) ** 2)
         # Assign zero mass to border
-        val[outer] = -np.inf
-        return val
+        vals[outer] = -np.inf
+        return vals
 
     def pdf(self, samples):
         '''
@@ -264,7 +265,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Probability density function evaluated at `samples`.
         '''
         return np.exp(self.logpdf(samples))
@@ -280,7 +281,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Log of the cumulative distribution function evaluated at `samples`.
         '''
         samples = np.copy(np.asarray(samples))
@@ -288,7 +289,7 @@ class Copula(object):
         samples = self._rotate_input(samples)
         if self.family == 'ind':
             old_settings = np.seterr(divide='ignore')
-            val = np.sum(np.log(samples), axis=1)
+            vals = np.sum(np.log(samples), axis=1)
             np.seterr(**old_settings)
         elif self.family == 'gaussian':
             lower = np.full(2, -np.inf)
@@ -302,49 +303,49 @@ class Copula(object):
                 '''
                 return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
 
-            val = np.apply_along_axis(func1d, -1, upper)
-            val = np.log(val)
-            val[np.any(samples == 0.0, axis=1)] = -np.inf
-            val[samples[:, 0] == 1.0] \
+            vals = np.apply_along_axis(func1d, -1, upper)
+            vals = np.log(vals)
+            vals[np.any(samples == 0.0, axis=1)] = -np.inf
+            vals[samples[:, 0] == 1.0] \
                 = np.log(samples[samples[:, 0] == 1.0, 1])
-            val[samples[:, 1] == 1.0] \
+            vals[samples[:, 1] == 1.0] \
                 = np.log(samples[samples[:, 1] == 1.0, 0])
         elif self.family == 'clayton':
             if self.theta == 0:
-                val = np.sum(np.log(samples), axis=1)
+                vals = np.sum(np.log(samples), axis=1)
             else:
                 old_settings = np.seterr(divide='ignore')
-                val = (-1 / self.theta) \
+                vals = (-1 / self.theta) \
                     * np.log(np.maximum(samples[:, 0]**(-self.theta)
                                         + samples[:, 1]**(-self.theta) - 1,
                                         0))
                 np.seterr(**old_settings)
         elif self.family == 'frank':
             if self.theta == 0:
-                val = np.sum(np.log(samples), axis=1)
+                vals = np.sum(np.log(samples), axis=1)
             else:
                 old_settings = np.seterr(divide='ignore')
-                val = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
-                                       * np.expm1(-self.theta * samples[:, 1])
-                                       / (np.expm1(-self.theta)))) \
+                vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
+                                        * np.expm1(-self.theta * samples[:, 1])
+                                        / (np.expm1(-self.theta)))) \
                     - np.log(self.theta)
                 np.seterr(**old_settings)
         # Transform according to rotation, but take `_rotate_input` into
         # account.
         if self.rotation == '90°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log(samples[:, 0] - np.exp(val))
+            vals = np.log(samples[:, 0] - np.exp(vals))
             np.seterr(**old_settings)
         elif self.rotation == '180°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log((1 - samples[:, 0]) + (1 - samples[:, 1]) - 1.0
-                         + np.exp(val))
+            vals = np.log((1 - samples[:, 0]) + (1 - samples[:, 1]) - 1.0
+                          + np.exp(vals))
             np.seterr(**old_settings)
         elif self.rotation == '270°':
             old_settings = np.seterr(divide='ignore')
-            val = np.log(samples[:, 1] - np.exp(val))
+            vals = np.log(samples[:, 1] - np.exp(vals))
             np.seterr(**old_settings)
-        return val
+        return vals
 
     def cdf(self, samples):
         '''
@@ -357,7 +358,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Cumulative distribution function evaluated at `samples`.
         '''
         return np.exp(self.logcdf(samples))
@@ -376,7 +377,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
         '''
@@ -388,37 +389,37 @@ class Copula(object):
             samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
             if self.family == 'ind':
-                val = samples[:, 0]
+                vals = samples[:, 0]
             elif self.family == 'gaussian':
-                nrv = norm.ppf(samples)
-                val = norm.cdf((nrv[:, 0] - self.theta * nrv[:, 1])
-                               / np.sqrt(1 - self.theta**2))
+                nrvs = norm.ppf(samples)
+                vals = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
+                                / np.sqrt(1 - self.theta**2))
             elif self.family == 'clayton':
                 if self.theta == 0:
-                    val = samples[:, 0]
+                    vals = samples[:, 0]
                 else:
-                    val = np.zeros(samples.shape[0])
+                    vals = np.zeros(samples.shape[0])
                     gtz = np.all(samples > 0.0, axis=1)
-                    val[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
-                                          * (samples[gtz, 0]**(-self.theta)
-                                             + samples[gtz, 1]**(-self.theta)
-                                             - 1)
-                                          ** (-1 - 1 / self.theta), 0)
+                    vals[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
+                                           * (samples[gtz, 0]**(-self.theta)
+                                              + samples[gtz, 1]**(-self.theta)
+                                              - 1)
+                                           ** (-1 - 1 / self.theta), 0)
             elif self.family == 'frank':
                 if self.theta == 0:
-                    val = samples[:, 0]
+                    vals = samples[:, 0]
                 else:
-                    val = np.exp(-self.theta * samples[:, 1]) \
-                            * np.expm1(-self.theta * samples[:, 0]) \
-                            / (np.expm1(-self.theta)
-                               + np.expm1(-self.theta * samples[:, 0])
-                               * np.expm1(-self.theta * samples[:, 1]))
+                    vals = np.exp(-self.theta * samples[:, 1]) \
+                        * np.expm1(-self.theta * samples[:, 0]) \
+                        / (np.expm1(-self.theta)
+                           + np.expm1(-self.theta * samples[:, 0])
+                           * np.expm1(-self.theta * samples[:, 1]))
             if self.rotation == '180°' or self.rotation == '270°':
-                val = 1.0 - val
+                vals = 1.0 - vals
         finally:
             # Recover original rotation
             self.rotation = rotation
-        return val
+        return vals
 
     def ppcf(self, samples, axis=1):
         '''
@@ -435,7 +436,7 @@ class Copula(object):
 
         Returns
         -------
-        val : ndarray
+        vals : ndarray
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
         '''
@@ -447,38 +448,38 @@ class Copula(object):
             samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
             if self.family == 'ind':
-                val = samples[:, 0]
+                vals = samples[:, 0]
             elif self.family == 'gaussian':
-                nrv = norm.ppf(samples)
-                val = norm.cdf(nrv[:, 0] * np.sqrt(1 - self.theta**2)
-                               + self.theta * nrv[:, 1])
+                nrvs = norm.ppf(samples)
+                vals = norm.cdf(nrvs[:, 0] * np.sqrt(1 - self.theta**2)
+                                + self.theta * nrvs[:, 1])
             elif self.family == 'clayton':
                 if self.theta == 0:
-                    val = samples[:, 0]
+                    vals = samples[:, 0]
                 else:
-                    val = np.zeros(samples.shape[0])
+                    vals = np.zeros(samples.shape[0])
                     gtz = np.all(samples > 0.0, axis=1)
-                    val[gtz] = (1 - samples[gtz, 1]**(-self.theta)
-                                + (samples[gtz, 0]
-                                   * (samples[gtz, 1]**(1 + self.theta)))
-                                ** (-self.theta / (1 + self.theta))) \
+                    vals[gtz] = (1 - samples[gtz, 1]**(-self.theta)
+                                 + (samples[gtz, 0]
+                                    * (samples[gtz, 1]**(1 + self.theta)))
+                                 ** (-self.theta / (1 + self.theta))) \
                         ** (-1 / self.theta)
             elif self.family == 'frank':
                 if self.theta == 0:
-                    val = samples[:, 0]
+                    vals = samples[:, 0]
                 else:
-                    val = -np.log1p(samples[:, 0] * np.expm1(-self.theta)
-                                    / (np.exp(-self.theta * samples[:, 1])
-                                       - samples[:, 0]
-                                       * np.expm1(-self.theta
-                                                  * samples[:, 1]))) \
+                    vals = -np.log1p(samples[:, 0] * np.expm1(-self.theta)
+                                     / (np.exp(-self.theta * samples[:, 1])
+                                        - samples[:, 0]
+                                        * np.expm1(-self.theta
+                                                   * samples[:, 1]))) \
                         / self.theta
             if self.rotation == '180°' or self.rotation == '270°':
-                val = 1.0 - val
+                vals = 1.0 - vals
         finally:
             # Recover orginial rotation
             self.rotation = rotation
-        return val
+        return vals
 
     def rvs(self, size=1):
         '''

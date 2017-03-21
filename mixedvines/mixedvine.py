@@ -128,9 +128,9 @@ class MixedVine(object):
 
     class VineLayer(object):
         '''
-        This class represents a layer of a copula vine tree. A tree description
-        in layers is advantageous, because most operations on the vine work in
-        sweeps from layer to layer.
+        This class represents a layer of a copula vine tree.  A tree
+        description in layers is advantageous, because most operations on the
+        vine work in sweeps from layer to layer.
         '''
         def __init__(self, input_layer=None, input_indices=None,
                      marginals=None, copulas=None):
@@ -144,6 +144,18 @@ class MixedVine(object):
             self.input_indices = input_indices
             self.marginals = marginals
             self.copulas = copulas
+            # Set indices of input marginals
+            if input_indices:
+                if input_layer.is_marginal_layer():
+                    self.input_marginal_indices = input_indices
+                else:
+                    self.input_marginal_indices = []
+                    for _, i_ind in enumerate(input_indices):
+                        self.input_marginal_indices.append(np.array([
+                            input_layer.input_marginal_indices[i_ind[0]][1],
+                            input_layer.input_marginal_indices[i_ind[1]][1]]))
+            else:
+                self.input_marginal_indices = None
 
         def is_marginal_layer(self):
             '''
@@ -245,51 +257,57 @@ class MixedVine(object):
                 logpdf = logpdf_in + logp[:, 0]
             return (logpdf, logp, cdfp, cdfm, is_continuous)
 
-        def build_cond(self, last, samples, cond):
+        def build_curvs(self, urvs, curvs):
             '''
-            Helper function for build_samples. Builds conditional samples cond
-            up to index last for build_samples.
+            Helper function for `make_dependent`.  Builds conditional uniform
+            random variates `curvs` for `make_dependent`.
             '''
-            self.build_samples(last, samples, cond)
-            if last == 0:
-                cond[:, last] = samples[:, last]
+            (urvs, curvs) = self.make_dependent(urvs, curvs)
+            if self.is_marginal_layer():
+                curvs[:, 0] = urvs[:, 0]
             else:
-                cond[:, last] = self.cond_ccdf(samples[:, last], cond, last)
+                copula_index = 0
+                curv_index = self.input_marginal_indices[copula_index][1]
+                curvs[:, curv_index] = self.curv_ccdf(urvs[:, curv_index],
+                                                      curvs, copula_index)
+            return (urvs, curvs)
 
-        def cond_ccdf(self, sample, cond, cond_index, copula_index=0):
+        def curv_ccdf(self, sample, curvs, copula_index):
             '''
-            Helper function for build_cond to generate a conditional sample.
+            Helper function for `build_cond` to generate a conditional sample.
             '''
-            if cond_index > 0:
-                sample = self.input_layer.cond_ccdf(sample, cond,
-                                                    cond_index - 1,
-                                                    copula_index + 1)
-                u = np.array([cond[:, cond_index], sample]).T
-                return self.copulas[copula_index].ccdf(u, axis=0)
-            else:
-                return sample
+            if not self.is_marginal_layer():
+                sample = self.input_layer.curv_ccdf(
+                    sample, curvs, self.input_indices[copula_index][1])
+                curv_index = self.input_marginal_indices[copula_index][0]
+                input_urvs = np.array([curvs[:, curv_index], sample]).T
+                sample = self.copulas[copula_index].ccdf(input_urvs, axis=0)
+            return sample
 
-        def build_samples(self, last, samples, cond):
+        def make_dependent(self, urvs, curvs=None):
             '''
-            Helper function for rvs. Draws uniform samples from the vine tree,
-            populating samples up to index last.
+            Helper function for `rvs`.  Introduces dependencies between the
+            uniform random variates `urvs` according to the vine copula tree.
             '''
-            if last > 0:
-                self.input_layer.build_cond(last - 1, samples, cond)
-            samples[:, last] = np.random.rand(samples.shape[0])
-            layer = self
+            if not curvs:
+                curvs = np.zeros(shape=urvs.shape)
+            if not self.is_marginal_layer():
+                (urvs, curvs) = self.input_layer.build_curvs(urvs, curvs)
             copula_index = 0
+            layer = self
             while not layer.is_marginal_layer():
-                u = np.array([cond[:, last - copula_index - 1],
-                              samples[:, last]]).T
-                samples[:, last] = layer.copulas[copula_index].ppcf(u, axis=0)
+                imi = layer.input_marginal_indices[copula_index]
+                input_urvs = np.array([curvs[:, imi[0]], urvs[:, imi[1]]]).T
+                urvs[:, imi[1]] = layer.copulas[copula_index].ppcf(input_urvs,
+                                                                   axis=0)
+                copula_index = layer.input_indices[copula_index][1]
                 layer = layer.input_layer
-                copula_index += 1
+            return (urvs, curvs)
 
-        def rvs(self, size):
+        def rvs(self, size=1):
             '''
-            Generates random variates from the mixed vine. Currently ignores
-            input_indices and thus works only for c-vine.
+            Generates random variates from the mixed vine.  Currently assumes a
+            c-vine structure.
             '''
             if self.is_root_layer():
                 # Determine distribution dimension
@@ -297,14 +315,12 @@ class MixedVine(object):
                 while not layer.is_marginal_layer():
                     layer = layer.input_layer
                 dim = len(layer.marginals)
-                last = dim - 1
-                u = np.zeros(shape=[size, dim])
-                cond = np.zeros(shape=[size, dim])
-                self.build_samples(last, u, cond)
+                samples = np.random.rand(shape=[size, dim])
+                (samples, _) = self.make_dependent(samples)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
-                    u[:, i] = marginal.ppf(u[:, i])
-                return u
+                    samples[:, i] = marginal.ppf(samples[:, i])
+                return samples
             else:
                 return self.output_layer.rvs(size)
 
@@ -313,27 +329,26 @@ class MixedVine(object):
             Fits a vine tree.
             '''
             if self.is_marginal_layer():
-                self.marginals = []
-                output_u = np.zeros(samples.shape)
+                output_urvs = np.zeros(samples.shape)
                 for i in range(samples.shape[1]):
-                    self.marginals.append(Marginal.fit(samples[:, i],
-                                                       is_continuous[i]))
-                    output_u[:, i] = self.marginals[i].cdf(samples[:, i])
+                    self.marginals[i] = Marginal.fit(samples[:, i],
+                                                     is_continuous[i])
+                    output_urvs[:, i] = self.marginals[i].cdf(samples[:, i])
             else:
-                input_u = self.input_layer.fit(samples, is_continuous)
+                input_urvs = self.input_layer.fit(samples, is_continuous)
                 truncate = trunc_level and samples.shape[1] \
                     - len(self.input_indices) > trunc_level - 1
-                output_u = np.zeros((samples.shape[0],
-                                     len(self.input_indices)))
+                output_urvs = np.zeros((samples.shape[0],
+                                        len(self.input_indices)))
                 self.copulas = []
                 for i, i_ind in enumerate(self.input_indices):
                     if truncate:
                         next_copula = Copula('ind')
                     else:
-                        next_copula = Copula.fit(input_u[:, i_ind])
+                        next_copula = Copula.fit(input_urvs[:, i_ind])
                     self.copulas.append(next_copula)
-                    output_u[:, i] = next_copula.ccdf(input_u[:, i_ind])
-            return output_u
+                    output_urvs[:, i] = next_copula.ccdf(input_urvs[:, i_ind])
+            return output_urvs
 
         def get_all_params(self):
             '''
@@ -454,7 +469,8 @@ class MixedVine(object):
         '''
         Constructs a c-vine tree without fitting it.
         '''
-        layer = MixedVine.VineLayer()
+        marginals = np.empty(dim, dtype=object)
+        layer = MixedVine.VineLayer(marginals=marginals)
         for i in range(1, dim):
             input_indices = []
             # For each successor layer, generate c-vine input indices
