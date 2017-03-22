@@ -179,26 +179,32 @@ class MixedVine(object):
             else:
                 return self.output_layer.logpdf(samples)
 
+        def _marginal_densities(self, samples):
+            '''
+            Evaluate marginal densities.
+            '''
+            logp = np.zeros(samples.shape)
+            cdfp = np.zeros(samples.shape)
+            cdfm = np.zeros(samples.shape)
+            is_continuous = np.zeros(len(self.marginals), dtype=bool)
+            for k, marginal in enumerate(self.marginals):
+                is_continuous[k] = marginal.is_continuous
+                cdfp[:, k] = marginal.cdf(samples[:, k])
+                if marginal.is_continuous:
+                    logp[:, k] = marginal.logpdf(samples[:, k])
+                else:
+                    cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
+                    logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+            logpdf = logp[:, 0]
+            return (logpdf, logp, cdfp, cdfm, is_continuous)
+
         def densities(self, samples):
             '''
             Computes densities and cumulative distribution functions layer by
             layer.
             '''
             if self.is_marginal_layer():
-                # Evaluate marginal densities
-                logp = np.zeros(samples.shape)
-                cdfp = np.zeros(samples.shape)
-                cdfm = np.zeros(samples.shape)
-                is_continuous = np.zeros(len(self.marginals), dtype=bool)
-                for k, marginal in enumerate(self.marginals):
-                    is_continuous[k] = marginal.is_continuous
-                    cdfp[:, k] = marginal.cdf(samples[:, k])
-                    if marginal.is_continuous:
-                        logp[:, k] = marginal.logpdf(samples[:, k])
-                    else:
-                        cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
-                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
-                logpdf = logp[:, 0]
+                return self._marginal_densities(samples)
             else:
                 # Propagate samples to input_layer
                 (logpdf_in, logp_in, cdfp_in, cdfm_in, is_continuous_in) \
@@ -208,52 +214,70 @@ class MixedVine(object):
                 cdfm = np.zeros((samples.shape[0], len(self.copulas)))
                 is_continuous = np.zeros(len(self.copulas), dtype=bool)
                 for k, copula in enumerate(self.copulas):
-                    i = self.input_indices[k][0]
-                    j = self.input_indices[k][1]
-                    if is_continuous_in[i] and is_continuous_in[j]:
-                        cdfp[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
-                                                           cdfp_in[:, j]]).T,
-                                                 axis=0)
-                        log_c = copula.logpdf(np.array([cdfp_in[:, i],
-                                                        cdfp_in[:, j]]).T)
-                        logp[:, k] = log_c + logp_in[:, j]
-                    elif not is_continuous_in[i] and is_continuous_in[j]:
-                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
-                                                    cdfp_in[:, j]]).T)
-                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
-                                                    cdfp_in[:, j]]).T)
-                        cdfp[:, k] = np.exp(np.log(cdf0 - cdf1)
-                                            - logp_in[:, i])
-                        pdf0 = copula.ccdf(np.array([cdfp_in[:, i],
-                                                     cdfp_in[:, j]]).T)
-                        pdf1 = copula.ccdf(np.array([cdfm_in[:, i],
-                                                     cdfp_in[:, j]]).T)
-                        logp[:, k] = np.log(pdf0 - pdf1) + logp_in[:, j] \
-                            - logp_in[:, i]
-                    elif is_continuous_in[i] and not is_continuous_in[j]:
-                        cdfp[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
-                                                           cdfp_in[:, j]]).T,
-                                                 axis=0)
-                        cdfm[:, k] = copula.ccdf(np.array([cdfp_in[:, i],
-                                                           cdfm_in[:, j]]).T,
-                                                 axis=0)
+                    i = self.input_indices[k]
+                    # Distinguish between discrete and continuous inputs
+                    if is_continuous_in[i[0]] and is_continuous_in[i[1]]:
+                        cdfp[:, k] \
+                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
+                                                    cdfp_in[:, i[1]]]).T,
+                                          axis=0)
+                        logp[:, k] \
+                            = copula.logpdf(np.array([cdfp_in[:, i[0]],
+                                                      cdfp_in[:, i[1]]]).T) \
+                            + logp_in[:, i[1]]
+                    elif not is_continuous_in[i[0]] \
+                            and is_continuous_in[i[1]]:
+                        cdfp[:, k] \
+                            = np.exp(np.log(
+                                copula.cdf(
+                                    np.array([cdfp_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T)
+                                - copula.cdf(
+                                    np.array([cdfm_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T))
+                                     - logp_in[:, i[0]])
+                        logp[:, k] \
+                            = np.log(
+                                copula.ccdf(
+                                    np.array([cdfp_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T)
+                                - copula.ccdf(
+                                    np.array([cdfm_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T)) \
+                            - logp_in[:, i[0]] + logp_in[:, i[1]]
+                    elif is_continuous_in[i[0]] \
+                            and not is_continuous_in[i[1]]:
+                        cdfp[:, k] \
+                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
+                                                    cdfp_in[:, i[1]]]).T,
+                                          axis=0)
+                        cdfm[:, k] \
+                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
+                                                    cdfm_in[:, i[1]]]).T,
+                                          axis=0)
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     else:
-                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
-                                                    cdfp_in[:, j]]).T)
-                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
-                                                    cdfp_in[:, j]]).T)
-                        cdfp[:, k] = np.exp(np.log(cdf0 - cdf1)
-                                            - logp_in[:, i])
-                        cdf0 = copula.cdf(np.array([cdfp_in[:, i],
-                                                    cdfm_in[:, j]]).T)
-                        cdf1 = copula.cdf(np.array([cdfm_in[:, i],
-                                                    cdfm_in[:, j]]).T)
-                        cdfm[:, k] = np.exp(np.log(cdf0 - cdf1)
-                                            - logp_in[:, i])
+                        cdfp[:, k] \
+                            = np.exp(np.log(
+                                copula.cdf(
+                                    np.array([cdfp_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T)
+                                - copula.cdf(
+                                    np.array([cdfm_in[:, i[0]],
+                                              cdfp_in[:, i[1]]]).T))
+                                     - logp_in[:, i[0]])
+                        cdfm[:, k] \
+                            = np.exp(np.log(
+                                copula.cdf(
+                                    np.array([cdfp_in[:, i[0]],
+                                              cdfm_in[:, i[1]]]).T)
+                                - copula.cdf(
+                                    np.array([cdfm_in[:, i[0]],
+                                              cdfm_in[:, i[1]]]).T))
+                                     - logp_in[:, i[0]])
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     # This propagation of continuity is specific for the c-vine
-                    is_continuous[k] = is_continuous_in[j]
+                    is_continuous[k] = is_continuous_in[i[1]]
                 logpdf = logpdf_in + logp[:, 0]
             return (logpdf, logp, cdfp, cdfm, is_continuous)
 
