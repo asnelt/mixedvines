@@ -21,7 +21,7 @@ from __future__ import division
 from scipy.optimize import minimize
 from scipy.stats import norm, gamma, poisson, binom, nbinom
 import numpy as np
-from mixedvines.copula import Copula
+from mixedvines.copula import Copula, IndependenceCopula
 
 
 class Marginal(object):
@@ -367,7 +367,7 @@ class MixedVine(object):
                 self.copulas = []
                 for i, i_ind in enumerate(self.input_indices):
                     if truncate:
-                        next_copula = Copula('ind')
+                        next_copula = IndependenceCopula()
                     else:
                         next_copula = Copula.fit(input_urvs[:, i_ind])
                     self.copulas.append(next_copula)
@@ -409,7 +409,7 @@ class MixedVine(object):
             else:
                 bnds = self.input_layer.get_all_bounds()
                 for copula in self.copulas:
-                    for bnd in Copula.theta_bounds(copula.family):
+                    for bnd in copula.theta_bounds():
                         bnds.append(bnd)
             return bnds
 

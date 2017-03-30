@@ -18,14 +18,24 @@
 This module implements copula distributions.
 '''
 from __future__ import division
+import sys
+import abc
 from scipy.optimize import minimize
 from scipy.stats import norm, uniform, mvn
 import numpy as np
 
 
-class Copula(object):
+# Ensure abstract base class compatibility
+if sys.version_info[0] == 3 and sys.version_info[1] >= 4 \
+        or sys.version_info[0] > 3:
+    ABC = abc.ABC
+else:
+    ABC = abc.ABCMeta('ABC', (), {})
+
+
+class Copula(ABC):
     '''
-    This class represents a copula.
+    This abstract class represents a copula.
 
     Methods
     -------
@@ -43,53 +53,36 @@ class Copula(object):
         Inverse of the conditional cumulative distribution function.
     ``rvs(size=1)``
         Generate random variates.
-    ``fit(samples, family=None, rotation=None)``
+    ``estimate_theta(samples)``
+        Estimates the `theta` parameters from the given samples.
+    ``fit(samples)``
         Fit a copula to samples.
-    ``theta_bounds(family)``
+    ``theta_bounds()``
         Bounds for `theta` parameters.
     '''
-    family_options = ['ind', 'gaussian', 'clayton', 'frank']
     rotation_options = ['90°', '180°', '270°']
 
-    def __init__(self, family, theta=None, rotation=None):
+    def __init__(self, theta=None, rotation=None):
         '''
         Constructs a copula of a given family.
 
         Parameters
         ----------
-        family : string
-            Family name of the copula.  Can be one of the elements of
-            `Copula.family_options`.
         theta : array_like
             Parameter array of the copula.  The number of elements depends on
             the copula family.
         rotation : string, optional
-            Rotation of the copula.  Can be one of the elements of
+            Clockwise rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.  (Default: None)
         '''
-        Copula._check_family(family)
-        Copula._check_theta(family, theta)
+        Copula._check_theta(theta)
         Copula._check_rotation(rotation)
-        self.family = family
         self.theta = theta
         self.rotation = rotation
 
     @staticmethod
-    def _check_family(family):
-        '''
-        Checks the `family` parameter.
-
-        Parameters
-        ----------
-        family : string
-            Family name of the copula.  Can be one of the elements of
-            `Copula.family_options`.
-        '''
-        if family not in Copula.family_options:
-            raise ValueError("Family '" + family + "' not supported.")
-
-    @staticmethod
-    def _check_theta(family, theta):
+    @abc.abstractmethod
+    def _check_theta(theta):
         '''
         Checks the `theta` parameter.
 
@@ -99,16 +92,7 @@ class Copula(object):
             Parameter array of the copula.  The number of elements depends on
             the copula family.
         '''
-        if family == 'ind' and theta is not None:
-            raise ValueError("Independent copula has no parameter.")
-        if family == 'gaussian' and (theta < -1 or theta > 1):
-            raise ValueError("For Gaussian family, 'theta' must be a scalar in"
-                             " [-1, 1].")
-        if family == 'clayton' and theta < 0:
-            raise ValueError("For Clayton family, theta must be a non-negative"
-                             " scalar.")
-        if family == 'frank' and theta is None:
-            raise ValueError("For Frank family, theta must be a scalar.")
+        pass
 
     @staticmethod
     def _check_rotation(rotation):
@@ -194,6 +178,24 @@ class Copula(object):
             raise ValueError("axis must be in [0, 1].")
         return samples
 
+    @abc.abstractmethod
+    def _logpdf(self, samples):
+        '''
+        Calculates the log of the probability density function. The samples can
+        be assumed to lie within the unit hypercube.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Log of the probability density function evaluated at `samples`.
+        '''
+        pass
+
     def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
@@ -214,42 +216,7 @@ class Copula(object):
         inner = np.all(np.bitwise_and(samples != 0.0, samples != 1.0), axis=1)
         outer = np.invert(inner)
         vals = np.zeros(samples.shape[0])
-        # For 'ind' family, val remains at zero
-        if self.family == 'gaussian':
-            if self.theta >= 1.0:
-                vals[np.bitwise_and(inner,
-                                    samples[:, 0] == samples[:, 1])] = np.inf
-            elif self.theta <= -1.0:
-                vals[np.bitwise_and(inner,
-                                    samples[:, 0] == 1 - samples[:, 1])] \
-                    = np.inf
-            else:
-                nrvs = norm.ppf(samples)
-                vals[inner] = 2 * self.theta * nrvs[inner, 0] \
-                    * nrvs[inner, 1] - self.theta**2 \
-                    * (nrvs[inner, 0]**2 + nrvs[inner, 1]**2)
-                vals[inner] /= 2 * (1 - self.theta**2)
-                vals[inner] -= np.log(1 - self.theta**2) / 2
-        elif self.family == 'clayton':
-            if self.theta != 0:
-                vals[inner] = np.log(1 + self.theta) \
-                    + (-1 - self.theta) \
-                    * (np.log(samples[inner, 0])
-                       + np.log(samples[inner, 1])) \
-                    + (-1 / self.theta-2) \
-                    * np.log(samples[inner, 0]**(-self.theta)
-                             + samples[inner, 1]**(-self.theta) - 1)
-        elif self.family == 'frank':
-            if self.theta != 0:
-                vals[inner] = np.log(-self.theta * np.expm1(-self.theta)
-                                     * np.exp(-self.theta
-                                              * (samples[inner, 0]
-                                                 + samples[inner, 1]))
-                                     / (np.expm1(-self.theta)
-                                        + np.expm1(-self.theta
-                                                   * samples[inner, 0])
-                                        * np.expm1(-self.theta
-                                                   * samples[inner, 1])) ** 2)
+        vals[inner] = self._logpdf(samples[inner, :])
         # Assign zero mass to border
         vals[outer] = -np.inf
         return vals
@@ -270,6 +237,24 @@ class Copula(object):
         '''
         return np.exp(self.logpdf(samples))
 
+    @abc.abstractmethod
+    def _logcdf(self, samples):
+        '''
+        Calculates the log of the cumulative distribution function. The samples
+        can be assumed to lie within the unit hypercube.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Log of the cumulative distribution function evaluated at `samples`.
+        '''
+        pass
+
     def logcdf(self, samples):
         '''
         Calculates the log of the cumulative distribution function.
@@ -287,49 +272,7 @@ class Copula(object):
         samples = np.copy(np.asarray(samples))
         samples = self._crop_input(samples)
         samples = self._rotate_input(samples)
-        if self.family == 'ind':
-            old_settings = np.seterr(divide='ignore')
-            vals = np.sum(np.log(samples), axis=1)
-            np.seterr(**old_settings)
-        elif self.family == 'gaussian':
-            lower = np.full(2, -np.inf)
-            upper = norm.ppf(samples)
-            limit_flags = np.zeros(2)
-
-            def func1d(upper1d):
-                '''
-                Calculates the multivariate normal cumulative distribution
-                function of a single sample.
-                '''
-                return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
-
-            vals = np.apply_along_axis(func1d, -1, upper)
-            vals = np.log(vals)
-            vals[np.any(samples == 0.0, axis=1)] = -np.inf
-            vals[samples[:, 0] == 1.0] \
-                = np.log(samples[samples[:, 0] == 1.0, 1])
-            vals[samples[:, 1] == 1.0] \
-                = np.log(samples[samples[:, 1] == 1.0, 0])
-        elif self.family == 'clayton':
-            if self.theta == 0:
-                vals = np.sum(np.log(samples), axis=1)
-            else:
-                old_settings = np.seterr(divide='ignore')
-                vals = (-1 / self.theta) \
-                    * np.log(np.maximum(samples[:, 0]**(-self.theta)
-                                        + samples[:, 1]**(-self.theta) - 1,
-                                        0))
-                np.seterr(**old_settings)
-        elif self.family == 'frank':
-            if self.theta == 0:
-                vals = np.sum(np.log(samples), axis=1)
-            else:
-                old_settings = np.seterr(divide='ignore')
-                vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
-                                        * np.expm1(-self.theta * samples[:, 1])
-                                        / (np.expm1(-self.theta)))) \
-                    - np.log(self.theta)
-                np.seterr(**old_settings)
+        vals = self._logcdf(samples)
         # Transform according to rotation, but take `_rotate_input` into
         # account.
         if self.rotation == '90°':
@@ -363,6 +306,26 @@ class Copula(object):
         '''
         return np.exp(self.logcdf(samples))
 
+    @abc.abstractmethod
+    def _ccdf(self, samples):
+        '''
+        Calculates the conditional cumulative distribution function conditioned
+        on axis 1. The samples can be assumed to lie within the unit hypercube.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Conditional cumulative distribution function evaluated at
+            `samples`.
+        TODO.
+        '''
+        pass
+
     def ccdf(self, samples, axis=1):
         '''
         Calculates the conditional cumulative distribution function.
@@ -388,38 +351,33 @@ class Copula(object):
             # Temporarily change rotation according to axis
             samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
-            if self.family == 'ind':
-                vals = samples[:, 0]
-            elif self.family == 'gaussian':
-                nrvs = norm.ppf(samples)
-                vals = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
-                                / np.sqrt(1 - self.theta**2))
-            elif self.family == 'clayton':
-                if self.theta == 0:
-                    vals = samples[:, 0]
-                else:
-                    vals = np.zeros(samples.shape[0])
-                    gtz = np.all(samples > 0.0, axis=1)
-                    vals[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
-                                           * (samples[gtz, 0]**(-self.theta)
-                                              + samples[gtz, 1]**(-self.theta)
-                                              - 1)
-                                           ** (-1 - 1 / self.theta), 0)
-            elif self.family == 'frank':
-                if self.theta == 0:
-                    vals = samples[:, 0]
-                else:
-                    vals = np.exp(-self.theta * samples[:, 1]) \
-                        * np.expm1(-self.theta * samples[:, 0]) \
-                        / (np.expm1(-self.theta)
-                           + np.expm1(-self.theta * samples[:, 0])
-                           * np.expm1(-self.theta * samples[:, 1]))
+            vals = self._ccdf(samples)
             if self.rotation == '180°' or self.rotation == '270°':
                 vals = 1.0 - vals
         finally:
             # Recover original rotation
             self.rotation = rotation
         return vals
+
+    @abc.abstractmethod
+    def _ppcf(self, samples):
+        '''
+        Calculates the inverse of the copula conditional cumulative
+        distribution function conditioned on axis 1. The samples can be assumed
+        to lie within the unit hypercube.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Inverse of the conditional cumulative distribution function
+            evaluated at `samples`.
+        '''
+        pass
 
     def ppcf(self, samples, axis=1):
         '''
@@ -444,36 +402,10 @@ class Copula(object):
         samples = self._crop_input(samples)
         rotation = self.rotation
         try:
-            # Temporarily change rotation
+            # Temporarily change rotation according to axis
             samples = self._axis_rotate(samples, axis)
             samples = self._rotate_input(samples)
-            if self.family == 'ind':
-                vals = samples[:, 0]
-            elif self.family == 'gaussian':
-                nrvs = norm.ppf(samples)
-                vals = norm.cdf(nrvs[:, 0] * np.sqrt(1 - self.theta**2)
-                                + self.theta * nrvs[:, 1])
-            elif self.family == 'clayton':
-                if self.theta == 0:
-                    vals = samples[:, 0]
-                else:
-                    vals = np.zeros(samples.shape[0])
-                    gtz = np.all(samples > 0.0, axis=1)
-                    vals[gtz] = (1 - samples[gtz, 1]**(-self.theta)
-                                 + (samples[gtz, 0]
-                                    * (samples[gtz, 1]**(1 + self.theta)))
-                                 ** (-self.theta / (1 + self.theta))) \
-                        ** (-1 / self.theta)
-            elif self.family == 'frank':
-                if self.theta == 0:
-                    vals = samples[:, 0]
-                else:
-                    vals = -np.log1p(samples[:, 0] * np.expm1(-self.theta)
-                                     / (np.exp(-self.theta * samples[:, 1])
-                                        - samples[:, 0]
-                                        * np.expm1(-self.theta
-                                                   * samples[:, 1]))) \
-                        / self.theta
+            vals = self._ppcf(samples)
             if self.rotation == '180°' or self.rotation == '270°':
                 vals = 1.0 - vals
         finally:
@@ -500,75 +432,59 @@ class Copula(object):
         samples[:, 0] = self.ppcf(samples)
         return samples
 
-    @staticmethod
-    def fit(samples, family=None, rotation=None):
+    def estimate_theta(self, samples):
         '''
-        Fits the parameters of the copula to the given samples.
-
-        If `family` is `None` then the best fitting family is automatically
-        selected based on the Akaike information criterion.  For the Clayton
-        family, also the rotation is selected automatically if `family` and
-        `rotation` are both `None`.
+        Estimates the theta parameters from the given samples.
 
         Parameters
         ----------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        family : string, optional
-            Family name of the copula.  Can be one of the elements of
-            `Copula.family_options`.  (Default: best fitting family name)
-        rotation : string, optional
-            Rotation of the copula.  Can be one of the elements of
-            `Copula.rotation_options` or `None`.  (Default: None)
+        '''
+        if self.theta:
+            bnds = self.theta_bounds()
+
+            def cost(theta):
+                '''
+                Calculates the cost of a given `theta` parameter.
+                '''
+                self.theta = np.asarray(theta)
+                return -np.sum(self.logpdf(samples))
+
+            result = minimize(cost, self.theta, method='TNC', bounds=bnds)
+            self.theta = result.x
+
+    @staticmethod
+    def fit(samples):
+        '''
+        Fits the parameters of the copula to the given samples.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
 
         Returns
         -------
         copula : Copula
             The copula fitted to `samples`.
         '''
-        if family:
-            Copula._check_family(family)
-            Copula._check_rotation(rotation)
-            if family == 'ind':
-                return Copula(family, theta=None, rotation=rotation)
-            elif family == 'gaussian':
-                initial_point = (0.0)
-            elif family == 'clayton':
-                initial_point = (1.0)
-            elif family == 'frank':
-                initial_point = (0.0)
-            # Optimize copula parameters
-            bnds = Copula.theta_bounds(family)
-            copula = Copula(family, theta=initial_point, rotation=rotation)
-
-            def cost(theta):
-                '''
-                Calculates the cost of a given `theta` parameter.
-                '''
-                return Copula._theta_cost(theta, samples, copula)
-
-            result = minimize(cost, initial_point, method='TNC', bounds=bnds)
-            copula.theta = result.x
-        else:
-            # Also find best fitting family
-            copulas = []
-            for family in Copula.family_options:
-                copulas.append(Copula.fit(samples, family))
-                # For Clayton family, optimize rotation as well
-                if family == 'clayton':
-                    for rotation in Copula.rotation_options:
-                        copulas.append(Copula.fit(samples, family, rotation))
-            # Calculate Akaike information criterion
-            aic = np.zeros(len(copulas))
-            for i, copula in enumerate(copulas):
-                aic[i] = - 2 * np.sum(copula.logpdf(samples))
-                if copula.theta:
-                    aic[i] += 2 * len(copula.theta)
-            copula = copulas[np.argmin(aic)]
+        # Find best fitting family
+        copulas = []
+        for family in Copula.__subclasses__():
+            copulas.append(family.fit(samples))
+        # Calculate Akaike information criterion
+        aic = np.zeros(len(copulas))
+        for i, copula in enumerate(copulas):
+            aic[i] = - 2 * np.sum(copula.logpdf(samples))
+            if copula.theta:
+                aic[i] += 2 * len(copula.theta)
+        copula = copulas[np.argmin(aic)]
         return copula
 
     @staticmethod
-    def theta_bounds(family):
+    @abc.abstractmethod
+    def theta_bounds():
         '''
         Bounds for `theta` parameters.
 
@@ -584,35 +500,264 @@ class Copula(object):
             n-by-2 matrix of bounds where the first column represents the lower
             bounds and the second column represents the upper bounds.
         '''
-        if family == 'gaussian':
-            bnds = [(-1.0 + 1e-3, 1.0 - 1e-3)]
-        elif family == 'clayton':
-            bnds = [(1e-3, 20)]
-        elif family == 'frank':
-            bnds = [(-20, 20)]
-        else:
-            bnds = []
-        return bnds
+        pass
+
+
+class IndependenceCopula(Copula):
+    '''
+    This class represents the independence copula.
+    '''
 
     @staticmethod
-    def _theta_cost(theta, samples, copula):
-        '''
-        Helper function for `theta` optimization.
+    def _check_theta(theta):
+        if theta is not None:
+            raise ValueError("Independence copula has no parameter.")
 
-        Parameters
-        ----------
-        theta : array_like
-            Parameter array of the copula.  The number of elements depends on
-            the copula family.
-        samples : array_like
-            n-by-2 matrix of samples where n is the number of samples.
-        copula : Copula
-            The copula to optimize.
+    def _logpdf(self, samples):
+        vals = np.zeros(samples.shape[0])
+        return vals
 
-        Returns
-        -------
-        val : float
-            The cost of a particular parameter vector `theta`.
-        '''
-        copula.theta = np.asarray(theta)
-        return -np.sum(copula.logpdf(samples))
+    def _logcdf(self, samples):
+        old_settings = np.seterr(divide='ignore')
+        vals = np.sum(np.log(samples), axis=1)
+        np.seterr(**old_settings)
+        return vals
+
+    def _ccdf(self, samples):
+        vals = samples[:, 0]
+        return vals
+
+    def _ppcf(self, samples):
+        vals = samples[:, 0]
+        return vals
+
+    @staticmethod
+    def fit(samples):
+        copula = IndependenceCopula()
+        return copula
+
+    @staticmethod
+    def theta_bounds():
+        bnds = []
+        return bnds
+
+
+class GaussianCopula(Copula):
+    '''
+    This class represents a copula from the Gaussian family.
+    '''
+
+    @staticmethod
+    def _check_theta(theta):
+        if theta < -1 or theta > 1:
+            raise ValueError("For Gaussian family, 'theta' must be a scalar in"
+                             " [-1, 1].")
+
+    def _logpdf(self, samples):
+        if self.theta >= 1.0:
+            vals = np.zeros(samples.shape[0])
+            vals[samples[:, 0] == samples[:, 1]] = np.inf
+        elif self.theta <= -1.0:
+            vals = np.zeros(samples.shape[0])
+            vals[samples[:, 0] == 1 - samples[:, 1]] = np.inf
+        else:
+            nrvs = norm.ppf(samples)
+            vals = 2 * self.theta * nrvs[:, 0] * nrvs[:, 1] - self.theta**2 \
+                * (nrvs[:, 0]**2 + nrvs[:, 1]**2)
+            vals /= 2 * (1 - self.theta**2)
+            vals -= np.log(1 - self.theta**2) / 2
+        return vals
+
+    def _logcdf(self, samples):
+        lower = np.full(2, -np.inf)
+        upper = norm.ppf(samples)
+        limit_flags = np.zeros(2)
+
+        def func1d(upper1d):
+            '''
+            Calculates the multivariate normal cumulative distribution
+            function of a single sample.
+            '''
+            return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
+
+        vals = np.apply_along_axis(func1d, -1, upper)
+        vals = np.log(vals)
+        vals[np.any(samples == 0.0, axis=1)] = -np.inf
+        vals[samples[:, 0] == 1.0] = np.log(samples[samples[:, 0] == 1.0, 1])
+        vals[samples[:, 1] == 1.0] = np.log(samples[samples[:, 1] == 1.0, 0])
+        return vals
+
+    def _ccdf(self, samples):
+        nrvs = norm.ppf(samples)
+        vals = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
+                        / np.sqrt(1 - self.theta**2))
+        return vals
+
+    def _ppcf(self, samples):
+        nrvs = norm.ppf(samples)
+        vals = norm.cdf(nrvs[:, 0] * np.sqrt(1 - self.theta**2)
+                        + self.theta * nrvs[:, 1])
+        return vals
+
+    @staticmethod
+    def fit(samples):
+        initial_point = (0.0)
+        copula = GaussianCopula(theta=initial_point)
+        copula.estimate_theta(samples)
+        return copula
+
+    @staticmethod
+    def theta_bounds():
+        bnds = [(-1.0 + 1e-3, 1.0 - 1e-3)]
+        return bnds
+
+
+class ClaytonCopula(Copula):
+    '''
+    This class represents a copula from the Clayton family.
+    '''
+
+    @staticmethod
+    def _check_theta(theta):
+        if theta < 0:
+            raise ValueError("For Clayton family, theta must be a non-negative"
+                             " scalar.")
+
+    def _logpdf(self, samples):
+        if self.theta == 0:
+            vals = np.zeros(samples.shape[0])
+        else:
+            vals = np.log(1 + self.theta) + (-1 - self.theta) \
+                   * (np.log(samples[:, 0]) + np.log(samples[:, 1])) \
+                   + (-1 / self.theta-2) \
+                   * np.log(samples[:, 0]**(-self.theta)
+                            + samples[:, 1]**(-self.theta) - 1)
+        return vals
+
+    def _logcdf(self, samples):
+        if self.theta == 0:
+            vals = np.sum(np.log(samples), axis=1)
+        else:
+            old_settings = np.seterr(divide='ignore')
+            vals = (-1 / self.theta) \
+                * np.log(np.maximum(samples[:, 0]**(-self.theta)
+                                    + samples[:, 1]**(-self.theta) - 1, 0))
+            np.seterr(**old_settings)
+        return vals
+
+    def _ccdf(self, samples):
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            vals = np.zeros(samples.shape[0])
+            gtz = np.all(samples > 0.0, axis=1)
+            vals[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
+                                   * (samples[gtz, 0]**(-self.theta)
+                                      + samples[gtz, 1]**(-self.theta) - 1)
+                                   ** (-1 - 1 / self.theta), 0)
+        return vals
+
+    def _ppcf(self, samples):
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            vals = np.zeros(samples.shape[0])
+            gtz = np.all(samples > 0.0, axis=1)
+            vals[gtz] = (1 - samples[gtz, 1]**(-self.theta)
+                         + (samples[gtz, 0]
+                            * (samples[gtz, 1]**(1 + self.theta)))
+                         ** (-self.theta / (1 + self.theta))) \
+                ** (-1 / self.theta)
+        return vals
+
+    @staticmethod
+    def fit(samples):
+        initial_point = (1.0)
+        # Optimize rotation as well
+        copulas = [ClaytonCopula(theta=initial_point)]
+        for rotation in Copula.rotation_options:
+            copulas.append(ClaytonCopula(theta=initial_point,
+                                         rotation=rotation))
+        # Fit parameters and calculate Akaike information criterion
+        aic = np.zeros(len(copulas))
+        for i, _ in enumerate(copulas):
+            copulas[i].estimate_theta(samples)
+            aic[i] = - 2 * np.sum(copulas[i].logpdf(samples)) \
+                + 2 * len(copulas[i].theta)
+        # Select best copula
+        copula = copulas[np.argmin(aic)]
+        return copula
+
+    @staticmethod
+    def theta_bounds():
+        bnds = [(1e-3, 20)]
+        return bnds
+
+
+class FrankCopula(Copula):
+    '''
+    This class represents a copula from the Frank family.
+    '''
+
+    @staticmethod
+    def _check_theta(theta):
+        if theta is None:
+            raise ValueError("For Frank family, theta must be a scalar.")
+
+    def _logpdf(self, samples):
+        if self.theta == 0:
+            vals = np.zeros(samples.shape[0])
+        else:
+            vals = np.log(-self.theta * np.expm1(-self.theta)
+                          * np.exp(-self.theta
+                                   * (samples[:, 0] + samples[:, 1]))
+                          / (np.expm1(-self.theta)
+                             + np.expm1(-self.theta * samples[:, 0])
+                             * np.expm1(-self.theta * samples[:, 1])) ** 2)
+        return vals
+
+    def _logcdf(self, samples):
+        if self.theta == 0:
+            vals = np.sum(np.log(samples), axis=1)
+        else:
+            old_settings = np.seterr(divide='ignore')
+            vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
+                                    * np.expm1(-self.theta * samples[:, 1])
+                                    / (np.expm1(-self.theta)))) \
+                - np.log(self.theta)
+            np.seterr(**old_settings)
+        return vals
+
+    def _ccdf(self, samples):
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            vals = np.exp(-self.theta * samples[:, 1]) \
+                * np.expm1(-self.theta * samples[:, 0]) \
+                / (np.expm1(-self.theta)
+                   + np.expm1(-self.theta * samples[:, 0])
+                   * np.expm1(-self.theta * samples[:, 1]))
+        return vals
+
+    def _ppcf(self, samples):
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            vals = -np.log1p(samples[:, 0] * np.expm1(-self.theta)
+                             / (np.exp(-self.theta * samples[:, 1])
+                                - samples[:, 0] * np.expm1(-self.theta
+                                                           * samples[:, 1]))) \
+                / self.theta
+        return vals
+
+    @staticmethod
+    def fit(samples):
+        initial_point = (0.0)
+        copula = FrankCopula(theta=initial_point)
+        copula.estimate_theta(samples)
+        return copula
+
+    @staticmethod
+    def theta_bounds():
+        bnds = [(-20, 20)]
+        return bnds
