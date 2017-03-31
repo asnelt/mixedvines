@@ -28,10 +28,37 @@ class Marginal(object):
     '''
     This class represents a marginal distribution which can be continuous or
     discrete.
+
+    Methods
+    -------
+    ``logpdf(samples)``
+        Log of the probability density function or probability mass function.
+    ``pdf(samples)``
+        Probability density function or probability mass function.
+    ``logcdf(samples)``
+        Log of the cumulative distribution function.
+    ``cdf(samples)``
+        Cumulative distribution function.
+    ``ppf(samples)``
+        Inverse of the cumulative distribution function.
+    ``rvs(size=1)``
+        Generate random variates.
+    ``fit(samples)``
+        Fit a distribution to samples.
     '''
+
     def __init__(self, rv_mixed, is_continuous):
         '''
         Constructs a marginal distribution.
+
+        Parameters
+        ----------
+        rv_mixed : scipy.stats.rv_continuous or scipy.stats.rv_discrete
+            The distribution object, either of a continuous or of a discrete
+            univariate distribution.
+        is_continuous : bool
+            If `true` then `rv_mixed` is a continuous distribution. Otherwise,
+            `rv_mixed` is a discrete distribution.
         '''
         self.rv_mixed = rv_mixed
         self.is_continuous = is_continuous
@@ -39,6 +66,16 @@ class Marginal(object):
     def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Log of the probability density function evaluated at `samples`.
         '''
         if self.is_continuous:
             return self.rv_mixed.logpdf(samples)
@@ -48,30 +85,81 @@ class Marginal(object):
     def pdf(self, samples):
         '''
         Calculates the probability density function.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Probability density function evaluated at `samples`.
         '''
         return np.exp(self.logpdf(samples))
 
     def logcdf(self, samples):
         '''
         Calculates the log of the cumulative distribution function.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Log of the cumulative distribution function evaluated at `samples`.
         '''
         return self.rv_mixed.logcdf(samples)
 
     def cdf(self, samples):
         '''
         Calculates the cumulative distribution function.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Cumulative distribution function evaluated at `samples`.
         '''
         return np.exp(self.logcdf(samples))
 
     def ppf(self, samples):
         '''
         Calculates the inverse of the cumulative distribution function.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+
+        Returns
+        -------
+        vals : ndarray
+            Inverse of the cumulative distribution function evaluated at
+            `samples`.
         '''
         return self.rv_mixed.ppf(samples)
 
     def rvs(self, size=1):
         '''
         Generates random variates from the distribution.
+
+        Parameters
+        ----------
+        size : integer, optional
+            The number of samples to generate.  (Default: 1)
+
+        Returns
+        -------
+        samples : array_like
+            Array of samples.
         '''
         return self.rv_mixed.rvs(size)
 
@@ -79,6 +167,19 @@ class Marginal(object):
     def fit(samples, is_continuous):
         '''
         Fits a distribution to the given samples.
+
+        Parameters
+        ----------
+        samples : array_like
+            Array of samples.
+        is_continuous : bool
+            If `true` then a continuous distribution is fitted. Otherwise, a
+            discrete distribution is fitted.
+
+        Returns
+        -------
+        marginal : Marginal
+            The distribution fitted to `samples`.
         '''
         # Mean and variance
         mean = np.mean(samples)
