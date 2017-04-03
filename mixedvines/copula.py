@@ -75,13 +75,13 @@ class Copula(ABC):
             Clockwise rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.  (Default: None)
         '''
-        self._check_theta(theta)
-        self._check_rotation(rotation)
+        self.__check_theta(theta)
+        self.__check_rotation(rotation)
         self.theta = theta
         self.rotation = rotation
 
     @classmethod
-    def _check_theta(cls, theta):
+    def __check_theta(cls, theta):
         '''
         Checks the `theta` parameter.
 
@@ -109,7 +109,7 @@ class Copula(ABC):
             raise ValueError("For this copula family, 'theta' must be 'None'.")
 
     @classmethod
-    def _check_rotation(cls, rotation):
+    def __check_rotation(cls, rotation):
         '''
         Checks the `rotation` parameter.
 
@@ -123,7 +123,7 @@ class Copula(ABC):
             raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
-    def _crop_input(samples):
+    def __crop_input(samples):
         '''
         Crops the input to the unit hypercube.  The input is changed and a
         reference to the input is returned.
@@ -142,7 +142,7 @@ class Copula(ABC):
         samples[samples > 1] = 1
         return samples
 
-    def _rotate_input(self, samples):
+    def __rotate_input(self, samples):
         '''
         Preprocesses the input to account for the copula rotation.  The input
         is changed and a reference to the input is returned.
@@ -198,8 +198,8 @@ class Copula(ABC):
             Log of the probability density function evaluated at `samples`.
         '''
         samples = np.copy(np.asarray(samples))
-        samples = self._crop_input(samples)
-        samples = self._rotate_input(samples)
+        samples = self.__crop_input(samples)
+        samples = self.__rotate_input(samples)
         inner = np.all(np.bitwise_and(samples != 0.0, samples != 1.0), axis=1)
         outer = np.invert(inner)
         vals = np.zeros(samples.shape[0])
@@ -257,10 +257,10 @@ class Copula(ABC):
             Log of the cumulative distribution function evaluated at `samples`.
         '''
         samples = np.copy(np.asarray(samples))
-        samples = self._crop_input(samples)
-        samples = self._rotate_input(samples)
+        samples = self.__crop_input(samples)
+        samples = self.__rotate_input(samples)
         vals = self._logcdf(samples)
-        # Transform according to rotation, but take `_rotate_input` into
+        # Transform according to rotation, but take `__rotate_input` into
         # account.
         if self.rotation == '90°':
             old_settings = np.seterr(divide='ignore')
@@ -293,7 +293,7 @@ class Copula(ABC):
         '''
         return np.exp(self.logcdf(samples))
 
-    def _axis_wrapper(self, fun, samples, axis):
+    def __axis_wrapper(self, fun, samples, axis):
         '''
         Calls function `fun` with `samples` as argument, but eventually changes
         rotation and samples such that `axis == 0` corresponds to `axis == 1`.
@@ -314,7 +314,7 @@ class Copula(ABC):
             account.
         '''
         samples = np.copy(np.asarray(samples))
-        samples = self._crop_input(samples)
+        samples = self.__crop_input(samples)
         rotation = self.rotation
         try:
             # Temporarily change rotation according to axis
@@ -326,7 +326,7 @@ class Copula(ABC):
                 samples = samples[:, [1, 0]]
             elif axis != 1:
                 raise ValueError("axis must be in [0, 1].")
-            samples = self._rotate_input(samples)
+            samples = self.__rotate_input(samples)
             vals = fun(samples)
             if self.rotation == '180°' or self.rotation == '270°':
                 vals = 1.0 - vals
@@ -373,7 +373,7 @@ class Copula(ABC):
             Conditional cumulative distribution function evaluated at
             `samples`.
         '''
-        return self._axis_wrapper(self._ccdf, samples, axis)
+        return self.__axis_wrapper(self._ccdf, samples, axis)
 
     @abc.abstractmethod
     def _ppcf(self, samples):
@@ -414,7 +414,7 @@ class Copula(ABC):
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
         '''
-        return self._axis_wrapper(self._ppcf, samples, axis)
+        return self.__axis_wrapper(self._ppcf, samples, axis)
 
     def rvs(self, size=1):
         '''
@@ -669,7 +669,7 @@ class ClaytonCopula(Copula):
 
     @staticmethod
     def theta_bounds():
-        bnds = [(1e-3, 20)]
+        bnds = [(0.5, 10)]
         return bnds
 
 
