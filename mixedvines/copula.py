@@ -151,33 +151,6 @@ class Copula(ABC):
             samples[:, 0] = 1 - samples[:, 0]
         return samples
 
-    def _axis_rotate(self, samples, axis):
-        '''
-        Changes rotation and samples such that `axis == 0` corresponds to
-        `axis == 1`.
-
-        Parameters
-        ----------
-        samples : array_like
-            n-by-2 matrix of samples where n is the number of samples.
-        axis : integer
-            The axis to condition the cumulative distribution function on.
-
-        Returns
-        -------
-        samples : array_like
-            n-by-2 matrix of rotated samples where n is the number of samples.
-        '''
-        if axis == 0:
-            if self.rotation == '90°':
-                self.rotation = '270°'
-            elif self.rotation == '270°':
-                self.rotation = '90°'
-            samples = samples[:, [1, 0]]
-        elif axis != 1:
-            raise ValueError("axis must be in [0, 1].")
-        return samples
-
     @abc.abstractmethod
     def _logpdf(self, samples):
         '''
@@ -306,6 +279,48 @@ class Copula(ABC):
         '''
         return np.exp(self.logcdf(samples))
 
+    def _axis_wrapper(self, fun, samples, axis):
+        '''
+        Calls function `fun` with `samples` as argument, but eventually changes
+        rotation and samples such that `axis == 0` corresponds to `axis == 1`.
+
+        Parameters
+        ----------
+        fun : function
+            Function to be called with `samples` as argument.
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+        axis : integer
+            The axis to condition the cumulative distribution function on.
+
+        Returns
+        -------
+        vals : array_like
+            Function values evaluated at `samples` but taking `axis` into
+            account.
+        '''
+        samples = np.copy(np.asarray(samples))
+        samples = self._crop_input(samples)
+        rotation = self.rotation
+        try:
+            # Temporarily change rotation according to axis
+            if axis == 0:
+                if self.rotation == '90°':
+                    self.rotation = '270°'
+                elif self.rotation == '270°':
+                    self.rotation = '90°'
+                samples = samples[:, [1, 0]]
+            elif axis != 1:
+                raise ValueError("axis must be in [0, 1].")
+            samples = self._rotate_input(samples)
+            vals = fun(samples)
+            if self.rotation == '180°' or self.rotation == '270°':
+                vals = 1.0 - vals
+        finally:
+            # Recover original rotation
+            self.rotation = rotation
+        return vals
+
     @abc.abstractmethod
     def _ccdf(self, samples):
         '''
@@ -344,20 +359,7 @@ class Copula(ABC):
             Conditional cumulative distribution function evaluated at
             `samples`.
         '''
-        samples = np.copy(np.asarray(samples))
-        samples = self._crop_input(samples)
-        rotation = self.rotation
-        try:
-            # Temporarily change rotation according to axis
-            samples = self._axis_rotate(samples, axis)
-            samples = self._rotate_input(samples)
-            vals = self._ccdf(samples)
-            if self.rotation == '180°' or self.rotation == '270°':
-                vals = 1.0 - vals
-        finally:
-            # Recover original rotation
-            self.rotation = rotation
-        return vals
+        return self._axis_wrapper(self._ccdf, samples, axis)
 
     @abc.abstractmethod
     def _ppcf(self, samples):
@@ -398,20 +400,7 @@ class Copula(ABC):
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
         '''
-        samples = np.copy(np.asarray(samples))
-        samples = self._crop_input(samples)
-        rotation = self.rotation
-        try:
-            # Temporarily change rotation according to axis
-            samples = self._axis_rotate(samples, axis)
-            samples = self._rotate_input(samples)
-            vals = self._ppcf(samples)
-            if self.rotation == '180°' or self.rotation == '270°':
-                vals = 1.0 - vals
-        finally:
-            # Recover orginial rotation
-            self.rotation = rotation
-        return vals
+        return self._axis_wrapper(self._ppcf, samples, axis)
 
     def rvs(self, size=1):
         '''
