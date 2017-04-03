@@ -75,14 +75,13 @@ class Copula(ABC):
             Clockwise rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.  (Default: None)
         '''
-        Copula._check_theta(theta)
-        Copula._check_rotation(rotation)
+        self._check_theta(theta)
+        self._check_rotation(rotation)
         self.theta = theta
         self.rotation = rotation
 
-    @staticmethod
-    @abc.abstractmethod
-    def _check_theta(theta):
+    @classmethod
+    def _check_theta(cls, theta):
         '''
         Checks the `theta` parameter.
 
@@ -92,10 +91,25 @@ class Copula(ABC):
             Parameter array of the copula.  The number of elements depends on
             the copula family.
         '''
-        pass
+        bnds = cls.theta_bounds()
+        if bnds:
+            theta = np.asarray(theta)
+            if theta.size != len(bnds):
+                raise ValueError("The number of elements of 'theta' does not"
+                                 " match the number of family parameters.")
+            if theta.size == 1:
+                if theta < bnds[0][0] or theta > bnds[0][1]:
+                    raise ValueError("Parameter theta out of bounds.")
+            else:
+                for i, bnd in enumerate(bnds):
+                    if theta[i] < bnd[0] or theta[i] > bnd[1]:
+                        raise ValueError("Parameter theta[" + str(i)
+                                         + "] out of bounds.")
+        elif theta:
+            raise ValueError("For this copula family, 'theta' must be 'None'.")
 
-    @staticmethod
-    def _check_rotation(rotation):
+    @classmethod
+    def _check_rotation(cls, rotation):
         '''
         Checks the `rotation` parameter.
 
@@ -105,7 +119,7 @@ class Copula(ABC):
             Rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.
         '''
-        if rotation and rotation not in Copula.rotation_options:
+        if rotation and rotation not in cls.rotation_options:
             raise ValueError("Rotation '" + rotation + "' not supported.")
 
     @staticmethod
@@ -443,8 +457,8 @@ class Copula(ABC):
             result = minimize(cost, self.theta, method='TNC', bounds=bnds)
             self.theta = result.x
 
-    @staticmethod
-    def fit(samples):
+    @classmethod
+    def fit(cls, samples):
         '''
         Fits the parameters of the copula to the given samples.
 
@@ -460,7 +474,7 @@ class Copula(ABC):
         '''
         # Find best fitting family
         copulas = []
-        for family in Copula.__subclasses__():
+        for family in cls.__subclasses__():
             copulas.append(family.fit(samples))
         # Calculate Akaike information criterion
         aic = np.zeros(len(copulas))
@@ -491,11 +505,6 @@ class IndependenceCopula(Copula):
     This class represents the independence copula.
     '''
 
-    @staticmethod
-    def _check_theta(theta):
-        if theta is not None:
-            raise ValueError("Independence copula has no parameter.")
-
     def _logpdf(self, samples):
         vals = np.zeros(samples.shape[0])
         return vals
@@ -514,9 +523,9 @@ class IndependenceCopula(Copula):
         vals = samples[:, 0]
         return vals
 
-    @staticmethod
-    def fit(samples):
-        copula = IndependenceCopula()
+    @classmethod
+    def fit(cls, samples):
+        copula = cls()
         return copula
 
     @staticmethod
@@ -529,12 +538,6 @@ class GaussianCopula(Copula):
     '''
     This class represents a copula from the Gaussian family.
     '''
-
-    @staticmethod
-    def _check_theta(theta):
-        if theta < -1 or theta > 1:
-            raise ValueError("For Gaussian family, 'theta' must be a scalar in"
-                             " [-1, 1].")
 
     def _logpdf(self, samples):
         if self.theta >= 1.0:
@@ -582,10 +585,10 @@ class GaussianCopula(Copula):
                         + self.theta * nrvs[:, 1])
         return vals
 
-    @staticmethod
-    def fit(samples):
+    @classmethod
+    def fit(cls, samples):
         initial_point = (0.0)
-        copula = GaussianCopula(theta=initial_point)
+        copula = cls(theta=initial_point)
         copula.estimate_theta(samples)
         return copula
 
@@ -599,12 +602,6 @@ class ClaytonCopula(Copula):
     '''
     This class represents a copula from the Clayton family.
     '''
-
-    @staticmethod
-    def _check_theta(theta):
-        if theta < 0:
-            raise ValueError("For Clayton family, theta must be a non-negative"
-                             " scalar.")
 
     def _logpdf(self, samples):
         if self.theta == 0:
@@ -653,14 +650,13 @@ class ClaytonCopula(Copula):
                 ** (-1 / self.theta)
         return vals
 
-    @staticmethod
-    def fit(samples):
+    @classmethod
+    def fit(cls, samples):
         initial_point = (1.0)
         # Optimize rotation as well
-        copulas = [ClaytonCopula(theta=initial_point)]
-        for rotation in Copula.rotation_options:
-            copulas.append(ClaytonCopula(theta=initial_point,
-                                         rotation=rotation))
+        copulas = [cls(theta=initial_point)]
+        for rotation in cls.rotation_options:
+            copulas.append(cls(theta=initial_point, rotation=rotation))
         # Fit parameters and calculate Akaike information criterion
         aic = np.zeros(len(copulas))
         for i, _ in enumerate(copulas):
@@ -681,11 +677,6 @@ class FrankCopula(Copula):
     '''
     This class represents a copula from the Frank family.
     '''
-
-    @staticmethod
-    def _check_theta(theta):
-        if theta is None:
-            raise ValueError("For Frank family, theta must be a scalar.")
 
     def _logpdf(self, samples):
         if self.theta == 0:
@@ -733,10 +724,10 @@ class FrankCopula(Copula):
                 / self.theta
         return vals
 
-    @staticmethod
-    def fit(samples):
+    @classmethod
+    def fit(cls, samples):
         initial_point = (0.0)
-        copula = FrankCopula(theta=initial_point)
+        copula = cls(theta=initial_point)
         copula.estimate_theta(samples)
         return copula
 
