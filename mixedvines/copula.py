@@ -477,17 +477,11 @@ class Copula(ABC):
         '''
         Bounds for `theta` parameters.
 
-        Parameters
-        ----------
-        family : string
-            Family name of the copula.  Can be one of the elements of
-            `Copula.family_options`.
-
         Returns
         -------
         bnds : array_like
-            n-by-2 matrix of bounds where the first column represents the lower
-            bounds and the second column represents the upper bounds.
+            List of 2-tuples where the first tuple element represents the lower
+            bound and the second element represents the upper bound.
         '''
         pass
 
