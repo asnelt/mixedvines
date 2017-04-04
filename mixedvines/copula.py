@@ -168,8 +168,8 @@ class Copula(ABC):
     @abc.abstractmethod
     def _logpdf(self, samples):
         '''
-        Calculates the log of the probability density function. The samples can
-        be assumed to lie within the unit hypercube.
+        Calculates the log of the probability density function.  The samples
+        can be assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -198,9 +198,8 @@ class Copula(ABC):
             Log of the probability density function evaluated at `samples`.
         '''
         samples = np.copy(np.asarray(samples))
-        samples = self.__crop_input(samples)
         samples = self.__rotate_input(samples)
-        inner = np.all(np.bitwise_and(samples != 0.0, samples != 1.0), axis=1)
+        inner = np.all(np.bitwise_and(samples > 0.0, samples < 1.0), axis=1)
         outer = np.invert(inner)
         vals = np.zeros(samples.shape[0])
         vals[inner] = self._logpdf(samples[inner, :])
@@ -227,8 +226,8 @@ class Copula(ABC):
     @abc.abstractmethod
     def _logcdf(self, samples):
         '''
-        Calculates the log of the cumulative distribution function. The samples
-        can be assumed to lie within the unit hypercube.
+        Calculates the log of the cumulative distribution function.  The
+        samples can be assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -339,7 +338,8 @@ class Copula(ABC):
     def _ccdf(self, samples):
         '''
         Calculates the conditional cumulative distribution function conditioned
-        on axis 1. The samples can be assumed to lie within the unit hypercube.
+        on axis 1.  The samples can be assumed to lie within the unit
+        hypercube.
 
         Parameters
         ----------
@@ -379,8 +379,8 @@ class Copula(ABC):
     def _ppcf(self, samples):
         '''
         Calculates the inverse of the copula conditional cumulative
-        distribution function conditioned on axis 1. The samples can be assumed
-        to lie within the unit hypercube.
+        distribution function conditioned on axis 1.  The samples can be
+        assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -452,7 +452,9 @@ class Copula(ABC):
                 Calculates the cost of a given `theta` parameter.
                 '''
                 self.theta = np.asarray(theta)
-                return -np.sum(self.logpdf(samples))
+                vals = self.logpdf(samples)
+                # For optimization, filter out inifinity values
+                return -np.sum(vals[np.isfinite(vals)])
 
             result = minimize(cost, self.theta, method='TNC', bounds=bnds)
             self.theta = result.x
@@ -609,7 +611,7 @@ class ClaytonCopula(Copula):
         else:
             vals = np.log(1 + self.theta) + (-1 - self.theta) \
                    * (np.log(samples[:, 0]) + np.log(samples[:, 1])) \
-                   + (-1 / self.theta-2) \
+                   + (-1 / self.theta - 2) \
                    * np.log(samples[:, 0]**(-self.theta)
                             + samples[:, 1]**(-self.theta) - 1)
         return vals
@@ -669,7 +671,7 @@ class ClaytonCopula(Copula):
 
     @staticmethod
     def theta_bounds():
-        bnds = [(0.5, 10)]
+        bnds = [(1e-3, 20)]
         return bnds
 
 
