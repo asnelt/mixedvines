@@ -57,7 +57,7 @@ class Marginal(object):
             The distribution object, either of a continuous or of a discrete
             univariate distribution.
         is_continuous : bool
-            If `true` then `rv_mixed` is a continuous distribution. Otherwise,
+            If `true` then `rv_mixed` is a continuous distribution.  Otherwise,
             `rv_mixed` is a discrete distribution.
         '''
         self.rv_mixed = rv_mixed
@@ -173,7 +173,7 @@ class Marginal(object):
         samples : array_like
             Array of samples.
         is_continuous : bool
-            If `true` then a continuous distribution is fitted. Otherwise, a
+            If `true` then a continuous distribution is fitted.  Otherwise, a
             discrete distribution is fitted.
 
         Returns
@@ -232,11 +232,56 @@ class MixedVine(object):
         This class represents a layer of a copula vine tree.  A tree
         description in layers is advantageous, because most operations on the
         vine work in sweeps from layer to layer.
+
+        Methods
+        -------
+        ``is_marginal_layer()``
+            Determines whether the layer is a marginal layer.
+        ``is_root_layer()``
+            Determines whether the layer is a root layer.
+        ``logpdf(samples)``
+            Log of the probability density function.
+        ``densities(samples)``
+            Computes densities and cumulative distribution functions.
+        ``build_curvs(urvs, curvs)``
+            Builds conditional uniform random variates `curvs` for
+            `make_dependent`.
+        ``curv_ccdf(sample, curvs, copula_index)``
+            Generates a conditional sample for `build_curvs`.
+        ``make_dependent(urvs, curvs)``
+            Introduces dependencies between the uniform random variates `urvs`.
+        ``rvs(size)``
+            Generates random variates from the mixed vine.
+        ``fit(samples, is_continuous, trunc_level)``
+            Fits a vine tree.
+        ``get_all_params()``
+            Constructs an array containing all copula parameters.
+        ``set_all_params(params)``
+            Sets all copula parameters to the values stored in params.
+        ``get_all_bounds()``
+            Collects the bounds of all copula parameters.
         '''
+
         def __init__(self, input_layer=None, input_indices=None,
                      marginals=None, copulas=None):
             '''
             Constructs a layer of a copula vine tree.
+
+            Parameters
+            ----------
+            input_layer : VineLayer, optional
+                The layer providing input.  (Default: None)
+            input_indices : array_like, optional
+                Array of length n where n is the number of copulas in this
+                layer.  Each element in the array is a 2-tuple containing the
+                left and right input indices of the respective pair-copula.
+                `None` if this is the marginal layer.
+            marginals : array_like, optional
+                List with the marginal distributions as elements.  `None` if
+                this is not the marginal layer.
+            copulas : array_like, optional
+                List with the pair-copulas of this layer as elements.  `None`
+                if this is the marginal layer.
             '''
             self.input_layer = input_layer
             self.output_layer = None
@@ -261,28 +306,66 @@ class MixedVine(object):
         def is_marginal_layer(self):
             '''
             Determines whether the layer is the marginal layer.
+
+            Returns
+            -------
+            iml : boolean
+                `True` if the layer is the marginal layer.
             '''
             return not self.input_layer
 
         def is_root_layer(self):
             '''
             Determines whether the layer is the output layer.
+
+            Returns
+            -------
+            irl : boolean
+                `True` if the layer is the root layer.
             '''
             return not self.output_layer
 
         def logpdf(self, samples):
             '''
             Calculates the log of the probability density function.
+
+            Parameters
+            ----------
+            samples : array_like
+                n-by-d matrix of samples where n is the number of samples and d
+                is the number of marginals.
+
+            Returns
+            -------
+            vals : ndarray
+                Log of the probability density function evaluated at `samples`.
             '''
             if self.is_root_layer():
                 res = self.densities(samples)
-                return res[0]
+                return res['logpdf']
             else:
                 return self.output_layer.logpdf(samples)
 
         def _marginal_densities(self, samples):
             '''
-            Evaluate marginal densities.
+            Evaluate marginal densities and cumulative distribution functions.
+
+            Parameters
+            ----------
+            samples : array_like
+                n-by-d matrix of samples where n is the number of samples and d
+                is the number of marginals.
+
+            Returns
+            -------
+            dout : dictionary
+                The densities and cumulative distribution functions.  Keys:
+                `logpdf`: Equal to first element of `logp`.
+                'logp': Log of the probability density function.
+                'cdfp': Upper cumulative distribution functions.
+                'cdfm': Lower cumulative distribution functions.
+                'is_continuous': List of booleans where element i is `True` if
+                output element i is continuous.
             '''
             logp = np.zeros(samples.shape)
             cdfp = np.zeros(samples.shape)
@@ -297,95 +380,135 @@ class MixedVine(object):
                     cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
                     logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
             logpdf = logp[:, 0]
-            return (logpdf, logp, cdfp, cdfm, is_continuous)
+            dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
+                    'is_continuous': is_continuous}
+            return dout
 
         def densities(self, samples):
             '''
             Computes densities and cumulative distribution functions layer by
             layer.
+
+            Parameters
+            ----------
+            samples : array_like
+                n-by-d matrix of samples where n is the number of samples and d
+                is the number of marginals.
+
+            Returns
+            -------
+            dout : dictionary
+                The densities and cumulative distribution functions.  Keys:
+                `logpdf`: Sum of the first elements of `logp` of all input
+                layers and this one.
+                'logp': Log of the probability density function.
+                'cdfp': Upper cumulative distribution functions.
+                'cdfm': Lower cumulative distribution functions.
+                'is_continuous': List of booleans where element i is `True` if
+                output element i is continuous.
             '''
             if self.is_marginal_layer():
                 return self._marginal_densities(samples)
             else:
                 # Propagate samples to input_layer
-                (logpdf_in, logp_in, cdfp_in, cdfm_in, is_continuous_in) \
-                    = self.input_layer.densities(samples)
+                din = self.input_layer.densities(samples)
+                # Prepare output densities
                 logp = np.zeros((samples.shape[0], len(self.copulas)))
                 cdfp = np.zeros((samples.shape[0], len(self.copulas)))
                 cdfm = np.zeros((samples.shape[0], len(self.copulas)))
                 is_continuous = np.zeros(len(self.copulas), dtype=bool)
                 for k, copula in enumerate(self.copulas):
-                    i = self.input_indices[k]
+                    i = self.input_indices[k][0]
+                    j = self.input_indices[k][1]
                     # Distinguish between discrete and continuous inputs
-                    if is_continuous_in[i[0]] and is_continuous_in[i[1]]:
+                    if din['is_continuous'][i] and din['is_continuous'][j]:
                         cdfp[:, k] \
-                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
-                                                    cdfp_in[:, i[1]]]).T,
-                                          axis=0)
+                            = copula.ccdf(
+                                np.array([din['cdfp'][:, i],
+                                          din['cdfp'][:, j]]).T, axis=0)
                         logp[:, k] \
-                            = copula.logpdf(np.array([cdfp_in[:, i[0]],
-                                                      cdfp_in[:, i[1]]]).T) \
-                            + logp_in[:, i[1]]
-                    elif not is_continuous_in[i[0]] \
-                            and is_continuous_in[i[1]]:
+                            = copula.logpdf(
+                                np.array([din['cdfp'][:, i],
+                                          din['cdfp'][:, j]]).T) \
+                            + din['logp'][:, j]
+                    elif not din['is_continuous'][i] \
+                            and din['is_continuous'][j]:
                         cdfp[:, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([cdfp_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T)
+                                    np.array([din['cdfp'][:, i],
+                                              din['cdfp'][:, j]]).T)
                                 - copula.cdf(
-                                    np.array([cdfm_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T))
-                                     - logp_in[:, i[0]])
+                                    np.array([din['cdfm'][:, i],
+                                              din['cdfp'][:, j]]).T))
+                                     - din['logp'][:, i])
                         logp[:, k] \
                             = np.log(
                                 copula.ccdf(
-                                    np.array([cdfp_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T)
+                                    np.array([din['cdfp'][:, i],
+                                              din['cdfp'][:, j]]).T)
                                 - copula.ccdf(
-                                    np.array([cdfm_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T)) \
-                            - logp_in[:, i[0]] + logp_in[:, i[1]]
-                    elif is_continuous_in[i[0]] \
-                            and not is_continuous_in[i[1]]:
+                                    np.array([din['cdfm'][:, i],
+                                              din['cdfp'][:, j]]).T)) \
+                            - din['logp'][:, i] + din['logp'][:, j]
+                    elif din['is_continuous'][i] \
+                            and not din['is_continuous'][j]:
                         cdfp[:, k] \
-                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
-                                                    cdfp_in[:, i[1]]]).T,
-                                          axis=0)
+                            = copula.ccdf(
+                                np.array([din['cdfp'][:, i],
+                                          din['cdfp'][:, j]]).T, axis=0)
                         cdfm[:, k] \
-                            = copula.ccdf(np.array([cdfp_in[:, i[0]],
-                                                    cdfm_in[:, i[1]]]).T,
-                                          axis=0)
+                            = copula.ccdf(
+                                np.array([din['cdfp'][:, i],
+                                          din['cdfm'][:, j]]).T, axis=0)
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     else:
                         cdfp[:, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([cdfp_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T)
+                                    np.array([din['cdfp'][:, i],
+                                              din['cdfp'][:, j]]).T)
                                 - copula.cdf(
-                                    np.array([cdfm_in[:, i[0]],
-                                              cdfp_in[:, i[1]]]).T))
-                                     - logp_in[:, i[0]])
+                                    np.array([din['cdfm'][:, i],
+                                              din['cdfp'][:, j]]).T))
+                                     - din['logp'][:, i])
                         cdfm[:, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([cdfp_in[:, i[0]],
-                                              cdfm_in[:, i[1]]]).T)
+                                    np.array([din['cdfp'][:, i],
+                                              din['cdfm'][:, j]]).T)
                                 - copula.cdf(
-                                    np.array([cdfm_in[:, i[0]],
-                                              cdfm_in[:, i[1]]]).T))
-                                     - logp_in[:, i[0]])
+                                    np.array([din['cdfm'][:, i],
+                                              din['cdfm'][:, j]]).T))
+                                     - din['logp'][:, i])
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                     # This propagation of continuity is specific for the c-vine
-                    is_continuous[k] = is_continuous_in[i[1]]
-                logpdf = logpdf_in + logp[:, 0]
-            return (logpdf, logp, cdfp, cdfm, is_continuous)
+                    is_continuous[k] = din['is_continuous'][j]
+                logpdf = din['logpdf'] + logp[:, 0]
+            dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
+                    'is_continuous': is_continuous}
+            return dout
 
         def build_curvs(self, urvs, curvs):
             '''
             Helper function for `make_dependent`.  Builds conditional uniform
             random variates `curvs` for `make_dependent`.
+
+            Parameters
+            ----------
+            urvs : array_like
+                Uniform random variates to be made dependent by
+                `make_dependent`.
+            curvs : array_like
+                Array to be filled with dependent conditional uniform random
+                variates by `make_dependent`.
+
+            Returns
+            -------
+            urvs : array_like
+                Dependent uniform random variates.
+            curvs : array_like
+                Conditional uniform random variates.
             '''
             (urvs, curvs) = self.make_dependent(urvs, curvs)
             if self.is_marginal_layer():
@@ -399,7 +522,22 @@ class MixedVine(object):
 
         def curv_ccdf(self, sample, curvs, copula_index):
             '''
-            Helper function for `build_cond` to generate a conditional sample.
+            Helper function for `build_curvs` to generate a conditional sample.
+
+            Parameters
+            ----------
+            sample : float
+                Right input for the marginal layer.
+            curvs : array_like
+                Conditional uniform random variates.
+            copula_index : integer
+                Index of the copula to be used to generate the dependent
+                sample.
+
+            Returns
+            -------
+            sample : float
+                Conditional sample for `curvs` at index `copula_index`.
             '''
             if not self.is_marginal_layer():
                 sample = self.input_layer.curv_ccdf(
@@ -413,6 +551,21 @@ class MixedVine(object):
             '''
             Helper function for `rvs`.  Introduces dependencies between the
             uniform random variates `urvs` according to the vine copula tree.
+
+            Parameters
+            ----------
+            urvs : array_like
+                Uniform random variates to be made dependent.
+            curvs : array_like, optional
+                Array to be filled with dependent conditional uniform random
+                variates by `build_curvs'.  (Default: None)
+
+            Returns
+            -------
+            urvs : array_like
+                Dependent uniform random variates.
+            curvs : array_like
+                Conditional uniform random variates.
             '''
             if not curvs:
                 curvs = np.zeros(shape=urvs.shape)
@@ -433,6 +586,17 @@ class MixedVine(object):
             '''
             Generates random variates from the mixed vine.  Currently assumes a
             c-vine structure.
+
+            Parameters
+            ----------
+            size : integer, optional
+                The number of samples to generate.  (Default: 1)
+
+            Returns
+            -------
+            samples : array_like
+                n-by-d matrix of samples where n is the number of samples and d
+                is the number of marginals.
             '''
             if self.is_root_layer():
                 # Determine distribution dimension
@@ -451,7 +615,28 @@ class MixedVine(object):
 
         def fit(self, samples, is_continuous, trunc_level=None):
             '''
-            Fits a vine tree.
+            Fits the vine tree to the given samples.  This method is supposed
+            to be called on the output layer and will recurse to its input
+            layers.
+
+            Parameters
+            ----------
+            samples : array_like
+                n-by-d matrix of samples where n is the number of samples and d
+                is the number of marginals.
+            is_continuous : array_like
+                List of boolean values, where element i is `True` if marginal i
+                is continuous.
+            trunc_level : integer, optional
+                Layer level to truncate the vine at.  Copulas in layers beyond
+                are just independence copulas.  If the level is `None`, then
+                the vine is not truncated.  (Default: None)
+
+            Returns
+            -------
+            output_urvs : array_like
+                The output uniform random variates of the layer.  Can be
+                ignored if this is the output layer.
             '''
             if self.is_marginal_layer():
                 output_urvs = np.zeros(samples.shape)
@@ -477,8 +662,14 @@ class MixedVine(object):
 
         def get_all_params(self):
             '''
-            Constructs high dimensional vector containing all copula
-            parameters.
+            Constructs an array containing all copula parameters.
+
+            Returns
+            -------
+            params : array_like
+                A list containing all copula parameter values starting with the
+                parameters of the first copula layer and continuing layer by
+                layer.
             '''
             if self.is_marginal_layer():
                 params = []
@@ -492,6 +683,13 @@ class MixedVine(object):
         def set_all_params(self, params):
             '''
             Sets all copula parameters to the values stored in params.
+
+            Parameters
+            ----------
+            params : array_like
+                A list containing all copula parameter values starting with the
+                parameters of the first copula layer and continuing layer by
+                layer.
             '''
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
@@ -504,6 +702,15 @@ class MixedVine(object):
         def get_all_bounds(self):
             '''
             Collects the bounds of all copula parameters.
+
+            Returns
+            -------
+            bnds : array_like
+                A list of 2-tuples containing all copula parameter bounds
+                starting with the parameters of the first copula layer and
+                continuing layer by layer.  The first element of tuple i
+                denotes the lower bound and the second element denotes the
+                upper bound of parameter i.
             '''
             if self.is_marginal_layer():
                 bnds = []

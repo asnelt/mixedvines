@@ -68,9 +68,9 @@ class Copula(ABC):
 
         Parameters
         ----------
-        theta : array_like
+        theta : array_like, optional
             Parameter array of the copula.  The number of elements depends on
-            the copula family.
+            the copula family.  (Default: None)
         rotation : string, optional
             Clockwise rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.  (Default: None)
