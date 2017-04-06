@@ -224,7 +224,20 @@ class Marginal(object):
 
 class MixedVine(object):
     '''
-    This class represents a vine model with mixed marginals.
+    This class represents a copula vine model with mixed marginals.
+
+    Methods
+    -------
+    ``logpdf(samples)``
+        Calculates the log of the probability density function.
+    ``pdf(samples)``
+        Calculates the probability density function.
+    ``rvs(size)``
+        Generates random variates from the mixed vine.
+    ``entropy(alpha, sem_tol, mc_size)``
+        Estimates the entropy of the mixed vine.
+    ``fit(samples, is_continuous, vine_type, trunc_level, do_refine)``
+        Fits the mixed vine to the given samples.
     '''
 
     class VineLayer(object):
@@ -724,6 +737,14 @@ class MixedVine(object):
     def __init__(self, root=None, vine_type='c-vine'):
         '''
         Constructs a mixed vine model from a VineLayer root.
+
+        Parameters
+        ----------
+        root : VineLayer, optional
+            The root layer of the vine tree.  (Default: None)
+        vine_type : string, optional
+            Type of the vine tree.  Currently, only the canonical vine
+            ('c_vine') is supported.  (Default: 'c-vine')
         '''
         self.root = root
         self.vine_type = vine_type
@@ -731,24 +752,74 @@ class MixedVine(object):
     def logpdf(self, samples):
         '''
         Calculates the log of the probability density function.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-d matrix of samples where n is the number of samples and d is
+            the number of marginals.
+
+        Returns
+        -------
+        vals : ndarray
+            Log of the probability density function evaluated at `samples`.
         '''
         return self.root.logpdf(samples)
 
     def pdf(self, samples):
         '''
         Calculates the probability density function.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-d matrix of samples where n is the number of samples and d
+            is the number of marginals.
+
+        Returns
+        -------
+        vals : ndarray
+            Probability density function evaluated at `samples`.
         '''
         return np.exp(self.logpdf(samples))
 
     def rvs(self, size=1):
         '''
         Generates random variates from the mixed vine.
+
+        Parameters
+        ----------
+        size : integer, optional
+            The number of samples to generate.  (Default: 1)
+
+        Returns
+        -------
+        samples : array_like
+            n-by-d matrix of samples where n is the number of samples and d is
+            the number of marginals.
         '''
         return self.root.rvs(size)
 
     def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000):
         '''
         Estimates the entropy of the mixed vine.
+
+        Parameters
+        ----------
+        alpha : float, optional
+            Significance level of the entropy estimate.  (Default: 0.05)
+        sem_tol : float, optional
+            Maximum standard error as a stopping criterion.  (Default: 1e-3)
+        mc_size : integer, optional
+            Number of samples that are drawn in each iteration of the Monte
+            Carlo estimation.  (Default: 1000)
+
+        Returns
+        -------
+        ent : float
+            Estimate of the mixed vine entropy in bits.
+        sem : float
+            Standard error of the mixed vine entropy estimate in bits.
         '''
         # Gaussian confidence interval for sem_tol and level alpha
         conf = norm.ppf(1 - alpha)
@@ -774,6 +845,30 @@ class MixedVine(object):
             do_refine=False):
         '''
         Fits the mixed vine to the given samples.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-d matrix of samples where n is the number of samples and d is
+            the number of marginals.
+        is_continuous : array_like
+            List of boolean values, where element i is `True` if marginal i is
+            continuous.
+        vine_type : string, optional
+            Type of the vine tree.  Currently, only the canonical vine
+            ('c_vine') is supported.  (Default: 'c-vine')
+        trunc_level : integer, optional
+            Layer level to truncate the vine at.  Copulas in layers beyond are
+            just independence copulas.  If the level is `None`, then the vine
+            is not truncated.  (Default: None)
+        do_refine : boolean, optional
+            If true, then all pair copula parameters are optimized jointly at
+            the end.  (Default: False)
+
+        Returns
+        -------
+        vine : MixedVine
+            The mixed vine with parameters fitted to `samples`.
         '''
         if vine_type != 'c-vine':
             raise NotImplementedError
@@ -790,7 +885,9 @@ class MixedVine(object):
                 '''
                 Calculates the cost of a given set of copula parameters.
                 '''
-                return MixedVine._params_cost(params, samples, vine)
+                vine.root.set_all_params(params)
+                vals = vine.logpdf(samples)
+                return -np.sum(vals)
 
             result = minimize(cost, initial_point, method='TNC', bounds=bnds)
             vine.root.set_all_params(result.x)
@@ -799,7 +896,17 @@ class MixedVine(object):
     @staticmethod
     def _construct_c_vine(dim):
         '''
-        Constructs a c-vine tree without fitting it.
+        Constructs a c-vine tree without fitting its parameters.
+
+        Parameters
+        ----------
+        dim : integer
+            The number of marginals of the canonical vine tree.
+
+        Returns
+        -------
+        root : VineLayer
+            The root layer of the canonical vine tree.
         '''
         marginals = np.empty(dim, dtype=object)
         layer = MixedVine.VineLayer(marginals=marginals)
@@ -813,11 +920,3 @@ class MixedVine(object):
                                         input_indices=input_indices)
         root = layer
         return root
-
-    @staticmethod
-    def _params_cost(params, samples, vine):
-        '''
-        Helper function for copula parameter optimization.
-        '''
-        vine.root.set_all_params(params)
-        return -np.sum(vine.logpdf(samples))
