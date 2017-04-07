@@ -663,13 +663,11 @@ class MixedVine(object):
                     - len(self.input_indices) > trunc_level - 1
                 output_urvs = np.zeros((samples.shape[0],
                                         len(self.input_indices)))
-                self.copulas = []
                 for i, i_ind in enumerate(self.input_indices):
                     if truncate:
-                        next_copula = IndependenceCopula()
+                        self.copulas[i] = IndependenceCopula()
                     else:
-                        next_copula = Copula.fit(input_urvs[:, i_ind])
-                    self.copulas.append(next_copula)
+                        self.copulas[i] = Copula.fit(input_urvs[:, i_ind])
                     output_urvs[:, i] = next_copula.ccdf(input_urvs[:, i_ind])
             return output_urvs
 
@@ -734,20 +732,25 @@ class MixedVine(object):
                         bnds.append(bnd)
             return bnds
 
-    def __init__(self, root=None, vine_type='c-vine'):
+    def __init__(self, dim, vine_type='c-vine'):
         '''
-        Constructs a mixed vine model from a VineLayer root.
+        Constructs a mixed vine model.
 
         Parameters
         ----------
-        root : VineLayer, optional
-            The root layer of the vine tree.  (Default: None)
+        dim : integer
+            The number of marginals of the vine model.  Must be greater than 1.
         vine_type : string, optional
             Type of the vine tree.  Currently, only the canonical vine
             ('c_vine') is supported.  (Default: 'c-vine')
         '''
-        self.root = root
+        if dim < 2:
+            raise ValueError("The number of marginals 'dim' must be greater"
+                             " than 1.")
+        if vine_type != 'c-vine':
+            raise NotImplementedError
         self.vine_type = vine_type
+        self.root = self._construct_c_vine(dim)
 
     def logpdf(self, samples):
         '''
@@ -873,13 +876,12 @@ class MixedVine(object):
         if vine_type != 'c-vine':
             raise NotImplementedError
         dim = samples.shape[1]
-        root = MixedVine._construct_c_vine(dim)
-        root.fit(samples, is_continuous, trunc_level)
-        vine = MixedVine(root, vine_type)
+        vine = MixedVine(dim, vine_type)
+        vine.root.fit(samples, is_continuous, trunc_level)
         if do_refine:
             # Refine copula parameters
-            initial_point = root.get_all_params()
-            bnds = root.get_all_bounds()
+            initial_point = vine.root.get_all_params()
+            bnds = vine.root.get_all_bounds()
 
             def cost(params):
                 '''
@@ -896,7 +898,7 @@ class MixedVine(object):
     @staticmethod
     def _construct_c_vine(dim):
         '''
-        Constructs a c-vine tree without fitting its parameters.
+        Constructs a c-vine tree without setting marginals or copulas.
 
         Parameters
         ----------
@@ -908,15 +910,17 @@ class MixedVine(object):
         root : VineLayer
             The root layer of the canonical vine tree.
         '''
-        marginals = np.empty(dim, dtype=object)
+        marginals = np.empty(dim, dtype=Marginal)
         layer = MixedVine.VineLayer(marginals=marginals)
         for i in range(1, dim):
             input_indices = []
             # For each successor layer, generate c-vine input indices
             for j in range(dim - i):
                 input_indices.append(np.array([0, j+1]))
+            copulas = np.empty(len(input_indices), dtype=Copula)
             # Generate vine layer
             layer = MixedVine.VineLayer(input_layer=layer,
-                                        input_indices=input_indices)
+                                        input_indices=input_indices,
+                                        copulas=copulas)
         root = layer
         return root
