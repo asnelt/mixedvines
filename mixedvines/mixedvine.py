@@ -668,7 +668,8 @@ class MixedVine(object):
                         self.copulas[i] = IndependenceCopula()
                     else:
                         self.copulas[i] = Copula.fit(input_urvs[:, i_ind])
-                    output_urvs[:, i] = next_copula.ccdf(input_urvs[:, i_ind])
+                    output_urvs[:, i] \
+                        = self.copulas[i].ccdf(input_urvs[:, i_ind])
             return output_urvs
 
         def get_all_params(self):
