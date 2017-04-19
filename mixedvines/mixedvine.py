@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2017 Arno Onken
 #
 # This file is part of the mixedvines package.
@@ -843,6 +844,46 @@ class MixedVine(object):
             var_sum += np.sum((-log2p - ent) ** 2)
             sem = conf * np.sqrt(var_sum / (k * mc_size * (k * mc_size - 1)))
         return ent, sem
+
+    def set_marginal(self, marginal, marginal_index):
+        '''
+        Sets a particular marginal distribution in the mixed vine tree for
+        manual construction of a mixed vine model.
+
+        Parameters
+        ----------
+        marginal : MixedMarginal
+            The marginal distribution to be inserted.
+        marginal_index : integer
+            The index of the marginal in the marginal layer.
+        '''
+        layer = self.root
+        while not layer.is_marginal_layer():
+            layer = layer.input_layer
+        layer.marginals[marginal_index] = marginal
+
+    def set_copula(self, copula, copula_index, layer_index):
+        '''
+        Sets a particular pair copula in the mixed vine tree for manual
+        construction of a mixed vine model.
+
+        Parameters
+        ----------
+        copula : Copula
+            The copula to be inserted.
+        copula_index : integer
+            The index of the copula in its layer.
+        layer_index : integer
+            The index of the vine layer.
+        '''
+        layer = self.root
+        while not layer.is_marginal_layer():
+            layer = layer.input_layer
+        if layer_index < 1 or layer_index >= len(layer.marginals):
+            raise IndexError("Argument 'layer_index' out of range.")
+        for _ in range(layer_index):
+            layer = layer.output_layer
+        layer.copulas[copula_index] = copula
 
     @staticmethod
     def fit(samples, is_continuous, vine_type='c-vine', trunc_level=None,
