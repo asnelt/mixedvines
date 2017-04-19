@@ -585,7 +585,7 @@ class MixedVine(object):
             curvs : array_like
                 Conditional uniform random variates.
             '''
-            if not curvs:
+            if curvs is None:
                 curvs = np.zeros(shape=urvs.shape)
             if not self.is_marginal_layer():
                 (urvs, curvs) = self.input_layer.build_curvs(urvs, curvs)
@@ -622,7 +622,7 @@ class MixedVine(object):
                 while not layer.is_marginal_layer():
                     layer = layer.input_layer
                 dim = len(layer.marginals)
-                samples = np.random.rand(shape=[size, dim])
+                samples = np.random.random(size=[size, dim])
                 (samples, _) = self.make_dependent(samples)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
