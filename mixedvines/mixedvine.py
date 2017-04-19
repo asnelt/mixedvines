@@ -237,6 +237,10 @@ class MixedVine(object):
         Generates random variates from the mixed vine.
     ``entropy(alpha, sem_tol, mc_size)``
         Estimates the entropy of the mixed vine.
+    ``set_marginal(marginal, marginal_index)``
+        Sets a particular marginal distribution in the mixed vine tree.
+    ``set_copula(copula, copula_index, layer_index)``
+        Sets a particular pair copula in the mixed vine tree.
     ``fit(samples, is_continuous, vine_type, trunc_level, do_refine)``
         Fits the mixed vine to the given samples.
     '''
@@ -852,7 +856,7 @@ class MixedVine(object):
 
         Parameters
         ----------
-        marginal : MixedMarginal
+        marginal : Marginal
             The marginal distribution to be inserted.
         marginal_index : integer
             The index of the marginal in the marginal layer.
