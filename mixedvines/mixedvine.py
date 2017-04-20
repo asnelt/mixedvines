@@ -20,7 +20,7 @@ This module implements a copula vine model with mixed marginals.
 '''
 from __future__ import division
 from scipy.optimize import minimize
-from scipy.stats import norm, gamma, poisson, binom, nbinom
+from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
 from mixedvines.copula import Copula, IndependenceCopula
 
@@ -44,25 +44,22 @@ class Marginal(object):
         Inverse of the cumulative distribution function.
     ``rvs(size=1)``
         Generate random variates.
-    ``fit(samples)``
+    ``fit(samples, is_continuous)``
         Fit a distribution to samples.
     '''
 
-    def __init__(self, rv_mixed, is_continuous):
+    def __init__(self, rv_mixed):
         '''
         Constructs a marginal distribution.
 
         Parameters
         ----------
-        rv_mixed : scipy.stats.rv_continuous or scipy.stats.rv_discrete
+        rv_mixed : rv_frozen
             The distribution object, either of a continuous or of a discrete
             univariate distribution.
-        is_continuous : bool
-            If `true` then `rv_mixed` is a continuous distribution.  Otherwise,
-            `rv_mixed` is a discrete distribution.
         '''
         self.rv_mixed = rv_mixed
-        self.is_continuous = is_continuous
+        self.is_continuous = isinstance(rv_mixed.dist, rv_continuous)
 
     def logpdf(self, samples):
         '''
@@ -213,7 +210,7 @@ class Marginal(object):
             else:
                 params[i] = dist.fit(samples)
             rv_mixed = dist(*params[i])
-            marginals[i] = Marginal(rv_mixed, is_continuous)
+            marginals[i] = Marginal(rv_mixed)
         # Calculate Akaike information criterion
         aic = np.zeros(len(options))
         for i, marginal in enumerate(marginals):
@@ -303,13 +300,13 @@ class MixedVine(object):
             '''
             self.input_layer = input_layer
             self.output_layer = None
-            if input_layer:
+            if input_layer is not None:
                 input_layer.output_layer = self
             self.input_indices = input_indices
             self.marginals = marginals
             self.copulas = copulas
             # Set indices of input marginals
-            if input_indices:
+            if input_indices is not None:
                 if input_layer.is_marginal_layer():
                     self.input_marginal_indices = input_indices
                 else:
@@ -452,24 +449,28 @@ class MixedVine(object):
                     elif not din['is_continuous'][i] \
                             and din['is_continuous'][j]:
                         old_settings = np.seterr(divide='ignore')
-                        cdfp[:, k] \
+                        isf = np.isfinite(din['logp'][:, i])
+                        cdfp[~isf, k] = 0.0
+                        cdfp[isf, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([din['cdfp'][:, i],
-                                              din['cdfp'][:, j]]).T)
+                                    np.array([din['cdfp'][isf, i],
+                                              din['cdfp'][isf, j]]).T)
                                 - copula.cdf(
-                                    np.array([din['cdfm'][:, i],
-                                              din['cdfp'][:, j]]).T))
-                                     - din['logp'][:, i])
-                        logp[:, k] \
+                                    np.array([din['cdfm'][isf, i],
+                                              din['cdfp'][isf, j]]).T))
+                                     - din['logp'][isf, i])
+                        isf = np.isfinite(din['logp'][:, i])
+                        logp[~isf, k] = -np.inf
+                        logp[isf, k] \
                             = np.log(
                                 copula.ccdf(
-                                    np.array([din['cdfp'][:, i],
-                                              din['cdfp'][:, j]]).T)
+                                    np.array([din['cdfp'][isf, i],
+                                              din['cdfp'][isf, j]]).T)
                                 - copula.ccdf(
-                                    np.array([din['cdfm'][:, i],
-                                              din['cdfp'][:, j]]).T)) \
-                            - din['logp'][:, i] + din['logp'][:, j]
+                                    np.array([din['cdfm'][isf, i],
+                                              din['cdfp'][isf, j]]).T)) \
+                            - din['logp'][isf, i] + din['logp'][isf, j]
                         np.seterr(**old_settings)
                     elif din['is_continuous'][i] \
                             and not din['is_continuous'][j]:
@@ -486,24 +487,28 @@ class MixedVine(object):
                         np.seterr(**old_settings)
                     else:
                         old_settings = np.seterr(divide='ignore')
-                        cdfp[:, k] \
+                        isf = np.isfinite(din['logp'][:, i])
+                        cdfp[~isf, k] = 0.0
+                        cdfp[isf, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([din['cdfp'][:, i],
-                                              din['cdfp'][:, j]]).T)
+                                    np.array([din['cdfp'][isf, i],
+                                              din['cdfp'][isf, j]]).T)
                                 - copula.cdf(
-                                    np.array([din['cdfm'][:, i],
-                                              din['cdfp'][:, j]]).T))
-                                     - din['logp'][:, i])
-                        cdfm[:, k] \
+                                    np.array([din['cdfm'][isf, i],
+                                              din['cdfp'][isf, j]]).T))
+                                     - din['logp'][isf, i])
+                        isf = np.isfinite(din['logp'][:, i])
+                        cdfm[~isf, k] = 0.0
+                        cdfm[isf, k] \
                             = np.exp(np.log(
                                 copula.cdf(
-                                    np.array([din['cdfp'][:, i],
-                                              din['cdfm'][:, j]]).T)
+                                    np.array([din['cdfp'][isf, i],
+                                              din['cdfm'][isf, j]]).T)
                                 - copula.cdf(
-                                    np.array([din['cdfm'][:, i],
-                                              din['cdfm'][:, j]]).T))
-                                     - din['logp'][:, i])
+                                    np.array([din['cdfm'][isf, i],
+                                              din['cdfm'][isf, j]]).T))
+                                     - din['logp'][isf, i])
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
                         np.seterr(**old_settings)
                     # This propagation of continuity is specific for the c-vine
@@ -689,7 +694,7 @@ class MixedVine(object):
 
             Returns
             -------
-            params : array_like
+            params : list
                 A list containing all copula parameter values starting with the
                 parameters of the first copula layer and continuing layer by
                 layer.
@@ -699,8 +704,9 @@ class MixedVine(object):
             else:
                 params = self.input_layer.get_all_params()
                 for copula in self.copulas:
-                    for param in copula.theta:
-                        params.append(param)
+                    if copula.theta is not None:
+                        for param in copula.theta:
+                            params.append(param)
             return params
 
         def set_all_params(self, params):
@@ -709,7 +715,7 @@ class MixedVine(object):
 
             Parameters
             ----------
-            params : array_like
+            params : list
                 A list containing all copula parameter values starting with the
                 parameters of the first copula layer and continuing layer by
                 layer.
@@ -717,7 +723,7 @@ class MixedVine(object):
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
                 for i in range(len(self.copulas)):
-                    if self.copulas[i].theta:
+                    if self.copulas[i].theta is not None:
                         for j in range(len(self.copulas[i].theta)):
                             self.copulas[i].theta[j] = params.pop(0)
 
@@ -727,7 +733,7 @@ class MixedVine(object):
 
             Returns
             -------
-            bnds : array_like
+            bnds : list
                 A list of 2-tuples containing all copula parameter bounds
                 starting with the parameters of the first copula layer and
                 continuing layer by layer.  The first element of tuple i
@@ -756,8 +762,8 @@ class MixedVine(object):
             ('c_vine') is supported.  (Default: 'c-vine')
         '''
         if dim < 2:
-            raise ValueError("The number of marginals 'dim' must be greater"
-                             " than 1.")
+            raise ValueError("the number of marginals 'dim' must be greater"
+                             " than 1")
         if vine_type != 'c-vine':
             raise NotImplementedError
         self.vine_type = vine_type
@@ -889,7 +895,7 @@ class MixedVine(object):
         while not layer.is_marginal_layer():
             layer = layer.input_layer
         if layer_index < 1 or layer_index >= len(layer.marginals):
-            raise IndexError("Argument 'layer_index' out of range.")
+            raise IndexError("argument 'layer_index' out of range")
         for _ in range(layer_index):
             layer = layer.output_layer
         layer.copulas[copula_index] = copula
@@ -942,7 +948,8 @@ class MixedVine(object):
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
 
-            result = minimize(cost, initial_point, method='TNC', bounds=bnds)
+            result = minimize(cost, initial_point, method='COBYLA',
+                              bounds=bnds)
             vine.root.set_all_params(result.x.tolist())
         return vine
 

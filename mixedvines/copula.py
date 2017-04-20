@@ -93,21 +93,21 @@ class Copula(ABC):
             the copula family.
         '''
         bnds = cls.theta_bounds()
-        if bnds:
+        if len(bnds) > 0:
             theta = np.asarray(theta)
             if theta.size != len(bnds):
-                raise ValueError("The number of elements of 'theta' does not"
-                                 " match the number of family parameters.")
+                raise ValueError("the number of elements of 'theta' does not"
+                                 " match the number of family parameters")
             if theta.size == 1:
                 if theta < bnds[0][0] or theta > bnds[0][1]:
-                    raise ValueError("Parameter theta out of bounds.")
+                    raise ValueError("parameter theta out of bounds")
             else:
                 for i, bnd in enumerate(bnds):
                     if theta[i] < bnd[0] or theta[i] > bnd[1]:
-                        raise ValueError("Parameter theta[" + str(i)
-                                         + "] out of bounds.")
-        elif theta:
-            raise ValueError("For this copula family, 'theta' must be 'None'.")
+                        raise ValueError("parameter theta[" + str(i)
+                                         + "] out of bounds")
+        elif theta is not None:
+            raise ValueError("for this copula family, 'theta' must be 'None'")
 
     @classmethod
     def __check_rotation(cls, rotation):
@@ -120,8 +120,8 @@ class Copula(ABC):
             Rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.
         '''
-        if rotation and rotation not in cls.rotation_options:
-            raise ValueError("Rotation '" + rotation + "' not supported.")
+        if rotation is not None and rotation not in cls.rotation_options:
+            raise ValueError("rotation '" + rotation + "' not supported")
 
     @staticmethod
     def __crop_input(samples):
@@ -325,7 +325,7 @@ class Copula(ABC):
                     self.rotation = '90°'
                 samples = samples[:, [1, 0]]
             elif axis != 1:
-                raise ValueError("axis must be in [0, 1].")
+                raise ValueError("axis must be in [0, 1]")
             samples = self.__rotate_input(samples)
             vals = fun(samples)
             if self.rotation == '180°' or self.rotation == '270°':
@@ -445,7 +445,7 @@ class Copula(ABC):
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
         '''
-        if self.theta:
+        if self.theta is not None:
             bnds = self.theta_bounds()
 
             def cost(theta):
@@ -483,8 +483,11 @@ class Copula(ABC):
         aic = np.zeros(len(copulas))
         for i, copula in enumerate(copulas):
             aic[i] = - 2 * np.sum(copula.logpdf(samples))
-            if copula.theta:
-                aic[i] += 2 * len(copula.theta)
+            if copula.theta is not None:
+                if np.isscalar(copula.theta):
+                    aic[i] += 2
+                else:
+                    aic[i] += 2 * len(copula.theta)
         copula = copulas[np.argmin(aic)]
         return copula
 
@@ -570,7 +573,9 @@ class GaussianCopula(Copula):
             return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
 
         vals = np.apply_along_axis(func1d, -1, upper)
+        old_settings = np.seterr(divide='ignore')
         vals = np.log(vals)
+        np.seterr(**old_settings)
         vals[np.any(samples == 0.0, axis=1)] = -np.inf
         vals[samples[:, 0] == 1.0] = np.log(samples[samples[:, 0] == 1.0, 1])
         vals[samples[:, 1] == 1.0] = np.log(samples[samples[:, 1] == 1.0, 0])
