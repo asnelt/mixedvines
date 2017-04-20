@@ -451,6 +451,7 @@ class MixedVine(object):
                             + din['logp'][:, j]
                     elif not din['is_continuous'][i] \
                             and din['is_continuous'][j]:
+                        old_settings = np.seterr(divide='ignore')
                         cdfp[:, k] \
                             = np.exp(np.log(
                                 copula.cdf(
@@ -469,6 +470,7 @@ class MixedVine(object):
                                     np.array([din['cdfm'][:, i],
                                               din['cdfp'][:, j]]).T)) \
                             - din['logp'][:, i] + din['logp'][:, j]
+                        np.seterr(**old_settings)
                     elif din['is_continuous'][i] \
                             and not din['is_continuous'][j]:
                         cdfp[:, k] \
@@ -479,8 +481,11 @@ class MixedVine(object):
                             = copula.ccdf(
                                 np.array([din['cdfp'][:, i],
                                           din['cdfm'][:, j]]).T, axis=0)
+                        old_settings = np.seterr(divide='ignore')
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                        np.seterr(**old_settings)
                     else:
+                        old_settings = np.seterr(divide='ignore')
                         cdfp[:, k] \
                             = np.exp(np.log(
                                 copula.cdf(
@@ -500,6 +505,7 @@ class MixedVine(object):
                                               din['cdfm'][:, j]]).T))
                                      - din['logp'][:, i])
                         logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                        np.seterr(**old_settings)
                     # This propagation of continuity is specific for the c-vine
                     is_continuous[k] = din['is_continuous'][j]
                 logpdf = din['logpdf'] + logp[:, 0]
