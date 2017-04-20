@@ -716,11 +716,10 @@ class MixedVine(object):
             '''
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
-                if self.copulas:
-                    for i in range(len(self.copulas)):
-                        if self.copulas[i].theta:
-                            for j in range(len(self.copulas[i].theta)):
-                                self.copulas[i].theta[j] = params.pop(0)
+                for i in range(len(self.copulas)):
+                    if self.copulas[i].theta:
+                        for j in range(len(self.copulas[i].theta)):
+                            self.copulas[i].theta[j] = params.pop(0)
 
         def get_all_bounds(self):
             '''
@@ -939,12 +938,12 @@ class MixedVine(object):
                 '''
                 Calculates the cost of a given set of copula parameters.
                 '''
-                vine.root.set_all_params(params)
+                vine.root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
 
             result = minimize(cost, initial_point, method='TNC', bounds=bnds)
-            vine.root.set_all_params(result.x)
+            vine.root.set_all_params(result.x.tolist())
         return vine
 
     @staticmethod
