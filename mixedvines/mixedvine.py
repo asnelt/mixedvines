@@ -452,24 +452,24 @@ class MixedVine(object):
                         isf = np.isfinite(din['logp'][:, i])
                         cdfp[~isf, k] = 0.0
                         cdfp[isf, k] \
-                            = np.exp(np.log(
+                            = np.exp(np.log(np.maximum(0,
                                 copula.cdf(
                                     np.array([din['cdfp'][isf, i],
                                               din['cdfp'][isf, j]]).T)
                                 - copula.cdf(
                                     np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T))
+                                              din['cdfp'][isf, j]]).T)))
                                      - din['logp'][isf, i])
                         isf = np.isfinite(din['logp'][:, i])
                         logp[~isf, k] = -np.inf
                         logp[isf, k] \
-                            = np.log(
+                            = np.log(np.maximum(0,
                                 copula.ccdf(
                                     np.array([din['cdfp'][isf, i],
                                               din['cdfp'][isf, j]]).T)
                                 - copula.ccdf(
                                     np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T)) \
+                                              din['cdfp'][isf, j]]).T))) \
                             - din['logp'][isf, i] + din['logp'][isf, j]
                         np.seterr(**old_settings)
                     elif din['is_continuous'][i] \
@@ -483,33 +483,35 @@ class MixedVine(object):
                                 np.array([din['cdfp'][:, i],
                                           din['cdfm'][:, j]]).T, axis=0)
                         old_settings = np.seterr(divide='ignore')
-                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                        logp[:, k] \
+                            = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
                         np.seterr(**old_settings)
                     else:
                         old_settings = np.seterr(divide='ignore')
                         isf = np.isfinite(din['logp'][:, i])
                         cdfp[~isf, k] = 0.0
                         cdfp[isf, k] \
-                            = np.exp(np.log(
+                            = np.exp(np.log(np.maximum(0,
                                 copula.cdf(
                                     np.array([din['cdfp'][isf, i],
                                               din['cdfp'][isf, j]]).T)
                                 - copula.cdf(
                                     np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T))
+                                              din['cdfp'][isf, j]]).T)))
                                      - din['logp'][isf, i])
                         isf = np.isfinite(din['logp'][:, i])
                         cdfm[~isf, k] = 0.0
                         cdfm[isf, k] \
-                            = np.exp(np.log(
+                            = np.exp(np.log(np.maximum(0,
                                 copula.cdf(
                                     np.array([din['cdfp'][isf, i],
                                               din['cdfm'][isf, j]]).T)
                                 - copula.cdf(
                                     np.array([din['cdfm'][isf, i],
-                                              din['cdfm'][isf, j]]).T))
+                                              din['cdfm'][isf, j]]).T)))
                                      - din['logp'][isf, i])
-                        logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                        logp[:, k] \
+                            = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
                         np.seterr(**old_settings)
                     # This propagation of continuity is specific for the c-vine
                     is_continuous[k] = din['is_continuous'][j]
@@ -948,7 +950,7 @@ class MixedVine(object):
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
 
-            result = minimize(cost, initial_point, method='COBYLA',
+            result = minimize(cost, initial_point, method='SLSQP',
                               bounds=bnds)
             vine.root.set_all_params(result.x.tolist())
         return vine
