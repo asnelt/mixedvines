@@ -451,26 +451,26 @@ class MixedVine(object):
                         old_settings = np.seterr(divide='ignore')
                         isf = np.isfinite(din['logp'][:, i])
                         cdfp[~isf, k] = 0.0
-                        cdfp[isf, k] \
-                            = np.exp(np.log(np.maximum(0,
-                                copula.cdf(
-                                    np.array([din['cdfp'][isf, i],
-                                              din['cdfp'][isf, j]]).T)
-                                - copula.cdf(
-                                    np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T)))
-                                     - din['logp'][isf, i])
+                        cdfp[isf, k] = np.exp(np.log(
+                            np.maximum(0,
+                                       copula.cdf(
+                                           np.array([din['cdfp'][isf, i],
+                                                     din['cdfp'][isf, j]]).T)
+                                       - copula.cdf(
+                                           np.array([din['cdfm'][isf, i],
+                                                     din['cdfp'][isf, j]]).T)))
+                                              - din['logp'][isf, i])
                         isf = np.isfinite(din['logp'][:, i])
                         logp[~isf, k] = -np.inf
-                        logp[isf, k] \
-                            = np.log(np.maximum(0,
-                                copula.ccdf(
-                                    np.array([din['cdfp'][isf, i],
-                                              din['cdfp'][isf, j]]).T)
-                                - copula.ccdf(
-                                    np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T))) \
-                            - din['logp'][isf, i] + din['logp'][isf, j]
+                        logp[isf, k] = np.log(
+                            np.maximum(0,
+                                       copula.ccdf(
+                                           np.array([din['cdfp'][isf, i],
+                                                     din['cdfp'][isf, j]]).T)
+                                       - copula.ccdf(
+                                           np.array([din['cdfm'][isf, i],
+                                                     din['cdfp'][isf, j]]).T))
+                            ) - din['logp'][isf, i] + din['logp'][isf, j]
                         np.seterr(**old_settings)
                     elif din['is_continuous'][i] \
                             and not din['is_continuous'][j]:
@@ -490,26 +490,26 @@ class MixedVine(object):
                         old_settings = np.seterr(divide='ignore')
                         isf = np.isfinite(din['logp'][:, i])
                         cdfp[~isf, k] = 0.0
-                        cdfp[isf, k] \
-                            = np.exp(np.log(np.maximum(0,
-                                copula.cdf(
-                                    np.array([din['cdfp'][isf, i],
-                                              din['cdfp'][isf, j]]).T)
-                                - copula.cdf(
-                                    np.array([din['cdfm'][isf, i],
-                                              din['cdfp'][isf, j]]).T)))
-                                     - din['logp'][isf, i])
+                        cdfp[isf, k] = np.exp(np.log(
+                            np.maximum(0,
+                                       copula.cdf(
+                                           np.array([din['cdfp'][isf, i],
+                                                     din['cdfp'][isf, j]]).T)
+                                       - copula.cdf(
+                                           np.array([din['cdfm'][isf, i],
+                                                     din['cdfp'][isf, j]]).T)))
+                                              - din['logp'][isf, i])
                         isf = np.isfinite(din['logp'][:, i])
                         cdfm[~isf, k] = 0.0
-                        cdfm[isf, k] \
-                            = np.exp(np.log(np.maximum(0,
-                                copula.cdf(
-                                    np.array([din['cdfp'][isf, i],
-                                              din['cdfm'][isf, j]]).T)
-                                - copula.cdf(
-                                    np.array([din['cdfm'][isf, i],
-                                              din['cdfm'][isf, j]]).T)))
-                                     - din['logp'][isf, i])
+                        cdfm[isf, k] = np.exp(np.log(
+                            np.maximum(0,
+                                       copula.cdf(
+                                           np.array([din['cdfp'][isf, i],
+                                                     din['cdfm'][isf, j]]).T)
+                                       - copula.cdf(
+                                           np.array([din['cdfm'][isf, i],
+                                                     din['cdfm'][isf, j]]).T)))
+                                              - din['logp'][isf, i])
                         logp[:, k] \
                             = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
                         np.seterr(**old_settings)
