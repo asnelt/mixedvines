@@ -3,20 +3,26 @@ mixedvines Package for Python
 =============================
 
 Package for canonical vine copula trees with mixed continuous and discrete
-margins. If you use this package, then please cite:
-A. Onken and S. Panzeri (2016). Mixed vine copulas as joint models of spike
-counts and local field potentials. In D. D. Lee, M. Sugiyama, U. V. Luxburg,
-I. Guyon and R. Garnett, editors, Advances in Neural Information Processing
-Systems 29 (NIPS 2016), pages 1325–1333.
+marginals.  If you use this software for publication, please cite [1].
 
 
 Description
 -----------
 
-In this package, we will implement a complete framework based on canonical
-vine copulas for modelling multivariate data that are partly discrete and
-partly continuous. The resulting multivariate distributions will be
-flexible with rich dependence structures and arbitrary margins.
+This packge contains a complete framework based on canonical vine copulas for
+modelling multivariate data that are partly discrete and partly continuous.
+The resulting multivariate distributions are flexible with rich dependence
+structures and arbitrary marginals.  Please see [1] for a more detailed
+description of the framework.
+
+
+References
+----------
+
+1. A. Onken and S. Panzeri (2016). Mixed vine copulas as joint models of spike
+counts and local field potentials.  In D. D. Lee, M. Sugiyama, U. V. Luxburg,
+I. Guyon and R. Garnett, editors, Advances in Neural Information Processing
+Systems 29 (NIPS 2016), pages 1325-1333.
 
 
 License
