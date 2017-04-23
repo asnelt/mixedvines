@@ -19,43 +19,25 @@
 This module implements tests for the mixedvine module.
 '''
 from unittest import TestCase
+from scipy.stats import norm, gamma, poisson
+from mixedvines.copula import Copula, GaussianCopula, ClaytonCopula, \
+        FrankCopula
 from mixedvines.mixedvine import Marginal, MixedVine
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_approx_equal, assert_allclose
 
 
-class MarginalTestCase(TestCase):
+def test_marginal_fit():
     '''
-    This class represents test cases for the Marginal class.
+    Tests the fit method.
     '''
-    def setUp(self):
-        '''
-        Saves the current random state for later recovery and sets the random
-        seed to get reproducible results.
-        '''
-        # Save random state for later recovery
-        self.random_state = np.random.get_state()
-        # Set fixed random seed
-        np.random.seed(0)
-
-    def tearDown(self):
-        '''
-        Recovers the original random state.
-        '''
-        # Recover original random state
-        np.random.set_state(self.random_state)
-
-    def test_fit(self):
-        '''
-        Tests the fit method.
-        '''
-        samples = np.linspace(-2, 2, 3)
-        # Normal distribution
-        m = Marginal.fit(samples, True)
-        # Comparison values
-        r_logpdf = np.array([-2.15935316, -1.40935316, -2.15935316])
-        p_logpdf = m.logpdf(samples)
-        assert_allclose(p_logpdf, r_logpdf)
+    samples = np.linspace(-2, 2, 3)
+    # Normal distribution
+    marginal = Marginal.fit(samples, True)
+    # Comparison values
+    r_logpdf = np.array([-2.15935316, -1.40935316, -2.15935316])
+    p_logpdf = marginal.logpdf(samples)
+    assert_allclose(p_logpdf, r_logpdf)
 
 
 class MixedVineTestCase(TestCase):
@@ -64,13 +46,34 @@ class MixedVineTestCase(TestCase):
     '''
     def setUp(self):
         '''
-        Saves the current random state for later recovery and sets the random
-        seed to get reproducible results.
+        Saves the current random state for later recovery, sets the random seed
+        to get reproducible results and manually constructs a mixed vine.
         '''
         # Save random state for later recovery
         self.random_state = np.random.get_state()
         # Set fixed random seed
         np.random.seed(0)
+        # Manually construct mixed vine
+        self.dim = 3  # Dimension
+        vine_type = 'c-vine'  # Canonical vine type
+        self.vine = MixedVine(self.dim, vine_type)
+        # Specify marginals
+        self.marginals = np.empty(self.dim, dtype=Marginal)
+        self.marginals[0] = Marginal(norm(0, 1))
+        self.marginals[1] = Marginal(poisson(5))
+        self.marginals[2] = Marginal(gamma(2, 0, 4))
+        # Specify pair copulas
+        copulas = np.empty((self.dim - 1, self.dim), dtype=Copula)
+        copulas[0, 0] = GaussianCopula(0.5)
+        copulas[0, 1] = FrankCopula(4)
+        copulas[1, 0] = ClaytonCopula(5)
+        # Set marginals and pair copulas
+        for marginal_index, marginal in enumerate(self.marginals):
+            self.vine.set_marginal(marginal, marginal_index)
+        for layer_index in range(1, self.dim):
+            for copula_index in range(self.dim - layer_index):
+                self.vine.set_copula(copulas[layer_index - 1, copula_index],
+                                     copula_index, layer_index)
 
     def tearDown(self):
         '''
@@ -78,3 +81,53 @@ class MixedVineTestCase(TestCase):
         '''
         # Recover original random state
         np.random.set_state(self.random_state)
+
+    def test_pdf(self):
+        '''
+        Tests the probability density function.
+        '''
+        # Calculate probability density function on lattice
+        bnds = np.empty((3), dtype=object)
+        bnds[0] = [-1, 1]
+        bnds[1] = [0, 2]
+        bnds[2] = [0.5, 2]
+        (x0g, x1g, x2g) = np.mgrid[bnds[0][0]:bnds[0][1],
+                                   bnds[1][0]:bnds[1][1],
+                                   bnds[2][0]:bnds[2][1]]
+        points = np.array([x0g.ravel(), x1g.ravel(), x2g.ravel()]).T
+        r_logpdf = np.array([-6.313469, -17.406428, -4.375992, -6.226508,
+                             -8.836115, -20.430739, -5.107053, -6.687987])
+        p_logpdf = self.vine.logpdf(points)
+        assert_allclose(p_logpdf, r_logpdf)
+        r_pdf = np.array([1.811738e-03, 2.757302e-08, 1.257566e-02,
+                          1.976342e-03, 1.453865e-04, 1.339808e-09,
+                          6.053895e-03, 1.245788e-03])
+        p_pdf = self.vine.pdf(points)
+        assert_allclose(p_pdf, r_pdf, rtol=1e-5)
+
+    def test_fit(self):
+        '''
+        Tests the fit to samples.
+        '''
+        # Generate random variates
+        size = 100
+        samples = self.vine.rvs(size)
+        # Fit mixed vine to samples
+        is_continuous = np.full((self.dim), True, dtype=bool)
+        for marginal_index, marginal in enumerate(self.marginals):
+            is_continuous[marginal_index] = marginal.is_continuous
+        vine_est = MixedVine.fit(samples, is_continuous)
+        assert_approx_equal(vine_est.root.copulas[0].theta, 0.95341,
+                            significant=5)
+        assert_approx_equal(vine_est.root.input_layer.copulas[0].theta,
+                            0.48148, significant=5)
+        assert_approx_equal(vine_est.root.input_layer.copulas[1].theta,
+                            4.56877, significant=5)
+
+    def test_entropy(self):
+        '''
+        Tests the entropy estimate.
+        '''
+        (ent, sem) = self.vine.entropy(sem_tol=1e-2)
+        assert_approx_equal(ent, 7.83, significant=3)
+        assert_approx_equal(sem, 0.00999, significant=3)
