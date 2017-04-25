@@ -20,24 +20,12 @@ This module implements tests for the mixedvine module.
 '''
 from unittest import TestCase
 from scipy.stats import norm, gamma, poisson
+from mixedvines.marginal import Marginal
 from mixedvines.copula import Copula, GaussianCopula, ClaytonCopula, \
         FrankCopula
-from mixedvines.mixedvine import Marginal, MixedVine
+from mixedvines.mixedvine import MixedVine
 import numpy as np
 from numpy.testing import assert_approx_equal, assert_allclose
-
-
-def test_marginal_fit():
-    '''
-    Tests the fit method.
-    '''
-    samples = np.linspace(-2, 2, 3)
-    # Normal distribution
-    marginal = Marginal.fit(samples, True)
-    # Comparison values
-    r_logpdf = np.array([-2.15935316, -1.40935316, -2.15935316])
-    p_logpdf = marginal.logpdf(samples)
-    assert_allclose(p_logpdf, r_logpdf)
 
 
 class MixedVineTestCase(TestCase):

@@ -19,226 +19,47 @@
 This module implements a copula vine model with mixed marginals.
 '''
 from __future__ import division
+from scipy.stats import norm
 from scipy.optimize import minimize
-from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
+from mixedvines.marginal import Marginal
 from mixedvines.copula import Copula, IndependenceCopula
-
-
-class Marginal(object):
-    '''
-    This class represents a marginal distribution which can be continuous or
-    discrete.
-
-    Methods
-    -------
-    ``logpdf(samples)``
-        Log of the probability density function or probability mass function.
-    ``pdf(samples)``
-        Probability density function or probability mass function.
-    ``logcdf(samples)``
-        Log of the cumulative distribution function.
-    ``cdf(samples)``
-        Cumulative distribution function.
-    ``ppf(samples)``
-        Inverse of the cumulative distribution function.
-    ``rvs(size=1)``
-        Generate random variates.
-    ``fit(samples, is_continuous)``
-        Fit a distribution to samples.
-    '''
-
-    def __init__(self, rv_mixed):
-        '''
-        Constructs a marginal distribution.
-
-        Parameters
-        ----------
-        rv_mixed : rv_frozen
-            The distribution object, either of a continuous or of a discrete
-            univariate distribution.
-        '''
-        self.rv_mixed = rv_mixed
-        self.is_continuous = isinstance(rv_mixed.dist, rv_continuous)
-
-    def logpdf(self, samples):
-        '''
-        Calculates the log of the probability density function.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-
-        Returns
-        -------
-        vals : ndarray
-            Log of the probability density function evaluated at `samples`.
-        '''
-        if self.is_continuous:
-            return self.rv_mixed.logpdf(samples)
-        else:
-            return self.rv_mixed.logpmf(samples)
-
-    def pdf(self, samples):
-        '''
-        Calculates the probability density function.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-
-        Returns
-        -------
-        vals : ndarray
-            Probability density function evaluated at `samples`.
-        '''
-        return np.exp(self.logpdf(samples))
-
-    def logcdf(self, samples):
-        '''
-        Calculates the log of the cumulative distribution function.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-
-        Returns
-        -------
-        vals : ndarray
-            Log of the cumulative distribution function evaluated at `samples`.
-        '''
-        return self.rv_mixed.logcdf(samples)
-
-    def cdf(self, samples):
-        '''
-        Calculates the cumulative distribution function.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-
-        Returns
-        -------
-        vals : ndarray
-            Cumulative distribution function evaluated at `samples`.
-        '''
-        return np.exp(self.logcdf(samples))
-
-    def ppf(self, samples):
-        '''
-        Calculates the inverse of the cumulative distribution function.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-
-        Returns
-        -------
-        vals : ndarray
-            Inverse of the cumulative distribution function evaluated at
-            `samples`.
-        '''
-        return self.rv_mixed.ppf(samples)
-
-    def rvs(self, size=1):
-        '''
-        Generates random variates from the distribution.
-
-        Parameters
-        ----------
-        size : integer, optional
-            The number of samples to generate.  (Default: 1)
-
-        Returns
-        -------
-        samples : array_like
-            Array of samples.
-        '''
-        return self.rv_mixed.rvs(size)
-
-    @staticmethod
-    def fit(samples, is_continuous):
-        '''
-        Fits a distribution to the given samples.
-
-        Parameters
-        ----------
-        samples : array_like
-            Array of samples.
-        is_continuous : bool
-            If `true` then a continuous distribution is fitted.  Otherwise, a
-            discrete distribution is fitted.
-
-        Returns
-        -------
-        marginal : Marginal
-            The distribution fitted to `samples`.
-        '''
-        # Mean and variance
-        mean = np.mean(samples)
-        var = np.var(samples)
-        # Set suitable distributions
-        if is_continuous:
-            if np.any(samples <= 0):
-                options = [norm]
-            else:
-                options = [norm, gamma]
-        else:
-            if var > mean:
-                options = [poisson, binom, nbinom]
-            else:
-                options = [poisson, binom]
-        params = np.empty(len(options), dtype=object)
-        marginals = np.empty(len(options), dtype=object)
-        # Fit parameters and construct marginals
-        for i, dist in enumerate(options):
-            if dist == poisson:
-                params[i] = [mean]
-            elif dist == binom:
-                param_n = np.max(samples)
-                param_p = np.sum(samples) / (param_n * len(samples))
-                params[i] = [param_n, param_p]
-            elif dist == nbinom:
-                param_n = mean * mean / (var - mean)
-                param_p = mean / var
-                params[i] = [param_n, param_p]
-            else:
-                params[i] = dist.fit(samples)
-            rv_mixed = dist(*params[i])
-            marginals[i] = Marginal(rv_mixed)
-        # Calculate Akaike information criterion
-        aic = np.zeros(len(options))
-        for i, marginal in enumerate(marginals):
-            aic[i] = 2 * len(params[i]) \
-                     - 2 * np.sum(marginal.logpdf(samples))
-        best_marginal = marginals[np.argmin(aic)]
-        return best_marginal
 
 
 class MixedVine(object):
     '''
     This class represents a copula vine model with mixed marginals.
 
+    Parameters
+    ----------
+    dim : integer
+        The number of marginals of the vine model.  Must be greater than 1.
+    vine_type : string, optional
+        Type of the vine tree.  Currently, only the canonical vine ('c_vine')
+        is supported.  (Default: 'c-vine')
+
+    Attributes
+    ----------
+    vine_type : string
+        Type of the vine tree.
+    root : VineLayer
+        The root layer of the vine tree.
+
     Methods
     -------
-    ``logpdf(samples)``
+    logpdf(samples)
         Calculates the log of the probability density function.
-    ``pdf(samples)``
+    pdf(samples)
         Calculates the probability density function.
-    ``rvs(size)``
+    rvs(size)
         Generates random variates from the mixed vine.
-    ``entropy(alpha, sem_tol, mc_size)``
+    entropy(alpha, sem_tol, mc_size)
         Estimates the entropy of the mixed vine.
-    ``set_marginal(marginal, marginal_index)``
+    set_marginal(marginal, marginal_index)
         Sets a particular marginal distribution in the mixed vine tree.
-    ``set_copula(copula, copula_index, layer_index)``
+    set_copula(copula, copula_index, layer_index)
         Sets a particular pair copula in the mixed vine tree.
-    ``fit(samples, is_continuous, vine_type, trunc_level, do_refine)``
+    fit(samples, is_continuous, vine_type, trunc_level, do_refine)
         Fits the mixed vine to the given samples.
     '''
 
@@ -248,56 +69,68 @@ class MixedVine(object):
         description in layers is advantageous, because most operations on the
         vine work in sweeps from layer to layer.
 
+        Parameters
+        ----------
+        input_layer : VineLayer, optional
+            The layer providing input.  (Default: None)
+        input_indices : array_like, optional
+            Array of length n where n is the number of copulas in this layer.
+            Each element in the array is a 2-tuple containing the left and
+            right input indices of the respective pair-copula.  `None` if this
+            is the marginal layer.
+        marginals : array_like, optional
+            List with the marginal distributions as elements.  `None` if this
+            is not the marginal layer.
+        copulas : array_like, optional
+            List with the pair-copulas of this layer as elements.  `None` if
+            this is the marginal layer.
+
+        Attributes
+        ----------
+        input_layer : VineLayer
+            The layer providing input.
+        output_layer : VineLayer
+            The output layer.
+        input_indices : array_like
+            Array with the input indices of the copulas.
+        input_marginal_indices : array_like
+            Array with the input indices of the marginals.
+        marginals : array_like
+            List with the marginal distributions of this layer as elements.
+        copulas : array_like
+            List with the pair-copulas of this layer as elements.
+
         Methods
         -------
-        ``is_marginal_layer()``
+        is_marginal_layer()
             Determines whether the layer is a marginal layer.
-        ``is_root_layer()``
+        is_root_layer()
             Determines whether the layer is a root layer.
-        ``logpdf(samples)``
+        logpdf(samples)
             Log of the probability density function.
-        ``densities(samples)``
+        densities(samples)
             Computes densities and cumulative distribution functions.
-        ``build_curvs(urvs, curvs)``
+        build_curvs(urvs, curvs)
             Builds conditional uniform random variates `curvs` for
             `make_dependent`.
-        ``curv_ccdf(sample, curvs, copula_index)``
+        curv_ccdf(sample, curvs, copula_index)
             Generates a conditional sample for `build_curvs`.
-        ``make_dependent(urvs, curvs)``
+        make_dependent(urvs, curvs)
             Introduces dependencies between the uniform random variates `urvs`.
-        ``rvs(size)``
+        rvs(size)
             Generates random variates from the mixed vine.
-        ``fit(samples, is_continuous, trunc_level)``
+        fit(samples, is_continuous, trunc_level)
             Fits a vine tree.
-        ``get_all_params()``
+        get_all_params()
             Constructs an array containing all copula parameters.
-        ``set_all_params(params)``
+        set_all_params(params)
             Sets all copula parameters to the values stored in params.
-        ``get_all_bounds()``
+        get_all_bounds()
             Collects the bounds of all copula parameters.
         '''
 
         def __init__(self, input_layer=None, input_indices=None,
                      marginals=None, copulas=None):
-            '''
-            Constructs a layer of a copula vine tree.
-
-            Parameters
-            ----------
-            input_layer : VineLayer, optional
-                The layer providing input.  (Default: None)
-            input_indices : array_like, optional
-                Array of length n where n is the number of copulas in this
-                layer.  Each element in the array is a 2-tuple containing the
-                left and right input indices of the respective pair-copula.
-                `None` if this is the marginal layer.
-            marginals : array_like, optional
-                List with the marginal distributions as elements.  `None` if
-                this is not the marginal layer.
-            copulas : array_like, optional
-                List with the pair-copulas of this layer as elements.  `None`
-                if this is the marginal layer.
-            '''
             self.input_layer = input_layer
             self.output_layer = None
             if input_layer is not None:
@@ -324,7 +157,7 @@ class MixedVine(object):
 
             Returns
             -------
-            iml : boolean
+            boolean
                 `True` if the layer is the marginal layer.
             '''
             return not self.input_layer
@@ -335,7 +168,7 @@ class MixedVine(object):
 
             Returns
             -------
-            irl : boolean
+            boolean
                 `True` if the layer is the root layer.
             '''
             return not self.output_layer
@@ -352,7 +185,7 @@ class MixedVine(object):
 
             Returns
             -------
-            vals : ndarray
+            ndarray
                 Log of the probability density function evaluated at `samples`.
             '''
             if samples.size == 0:
@@ -591,7 +424,7 @@ class MixedVine(object):
                 Uniform random variates to be made dependent.
             curvs : array_like, optional
                 Array to be filled with dependent conditional uniform random
-                variates by `build_curvs'.  (Default: None)
+                variates by `build_curvs`.  (Default: None)
 
             Returns
             -------
@@ -627,7 +460,7 @@ class MixedVine(object):
 
             Returns
             -------
-            samples : array_like
+            array_like
                 n-by-d matrix of samples where n is the number of samples and d
                 is the number of marginals.
             '''
@@ -754,17 +587,6 @@ class MixedVine(object):
             return bnds
 
     def __init__(self, dim, vine_type='c-vine'):
-        '''
-        Constructs a mixed vine model.
-
-        Parameters
-        ----------
-        dim : integer
-            The number of marginals of the vine model.  Must be greater than 1.
-        vine_type : string, optional
-            Type of the vine tree.  Currently, only the canonical vine
-            ('c_vine') is supported.  (Default: 'c-vine')
-        '''
         if dim < 2:
             raise ValueError("the number of marginals 'dim' must be greater"
                              " than 1")
@@ -785,7 +607,7 @@ class MixedVine(object):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Log of the probability density function evaluated at `samples`.
         '''
         return self.root.logpdf(samples)
@@ -802,7 +624,7 @@ class MixedVine(object):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Probability density function evaluated at `samples`.
         '''
         return np.exp(self.logpdf(samples))
@@ -818,7 +640,7 @@ class MixedVine(object):
 
         Returns
         -------
-        samples : array_like
+        array_like
             n-by-d matrix of samples where n is the number of samples and d is
             the number of marginals.
         '''
@@ -926,7 +748,7 @@ class MixedVine(object):
             just independence copulas.  If the level is `None`, then the vine
             is not truncated.  (Default: None)
         do_refine : boolean, optional
-            If true, then all pair copula parameters are optimized jointly at
+            If `True`, then all pair copula parameters are optimized jointly at
             the end.  (Default: False)
 
         Returns

@@ -38,44 +38,48 @@ class Copula(ABC):
     '''
     This abstract class represents a copula.
 
+    Parameters
+    ----------
+    theta : array_like, optional
+        Parameter array of the copula.  The number of elements depends on the
+        copula family.  (Default: None)
+    rotation : string, optional
+        Clockwise rotation of the copula.  Can be one of the elements of
+        `Copula.rotation_options` or `None`.  (Default: None)
+
+    Attributes
+    ----------
+    theta : array_like
+        Parameter array of the copula.
+    rotation : string
+        Clockwise rotation of the copula.
+
     Methods
     -------
-    ``logpdf(samples)``
+    logpdf(samples)
         Log of the probability density function.
-    ``pdf(samples)``
+    pdf(samples)
         Probability density function.
-    ``logcdf(samples)``
+    logcdf(samples)
         Log of the cumulative distribution function.
-    ``cdf(samples)``
+    cdf(samples)
         Cumulative distribution function.
-    ``ccdf(samples, axis=1)``
+    ccdf(samples, axis=1)
         Conditional cumulative distribution function.
-    ``ppcf(samples, axis=1)``
+    ppcf(samples, axis=1)
         Inverse of the conditional cumulative distribution function.
-    ``rvs(size=1)``
+    rvs(size=1)
         Generate random variates.
-    ``estimate_theta(samples)``
+    estimate_theta(samples)
         Estimates the `theta` parameters from the given samples.
-    ``fit(samples)``
+    fit(samples)
         Fit a copula to samples.
-    ``theta_bounds()``
+    theta_bounds()
         Bounds for `theta` parameters.
     '''
     rotation_options = ['90°', '180°', '270°']
 
     def __init__(self, theta=None, rotation=None):
-        '''
-        Constructs a copula of a given family.
-
-        Parameters
-        ----------
-        theta : array_like, optional
-            Parameter array of the copula.  The number of elements depends on
-            the copula family.  (Default: None)
-        rotation : string, optional
-            Clockwise rotation of the copula.  Can be one of the elements of
-            `Copula.rotation_options` or `None`.  (Default: None)
-        '''
         self.__check_theta(theta)
         self.__check_rotation(rotation)
         self.theta = theta
@@ -288,7 +292,7 @@ class Copula(ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Cumulative distribution function evaluated at `samples`.
         '''
         return np.exp(self.logcdf(samples))
@@ -352,7 +356,6 @@ class Copula(ABC):
         vals : ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
-        TODO.
         '''
         pass
 

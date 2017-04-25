@@ -82,9 +82,10 @@ To manually construct and visualize a simple mixed vine model:
 
     from scipy.stats import norm, gamma, poisson
     import numpy as np
+    from mixedvines.marginal import Marginal
     from mixedvines.copula import Copula, GaussianCopula, ClaytonCopula, \
             FrankCopula
-    from mixedvines.mixedvine import Marginal, MixedVine
+    from mixedvines.mixedvine import MixedVine
     import matplotlib.pyplot as plt
     # Manually construct mixed vine
     dim = 3  # Dimension
