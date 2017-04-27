@@ -46,22 +46,13 @@ class MixedVineTestCase(TestCase):
         vine_type = 'c-vine'  # Canonical vine type
         self.vine = MixedVine(self.dim, vine_type)
         # Specify marginals
-        self.marginals = np.empty(self.dim, dtype=Marginal)
-        self.marginals[0] = Marginal(norm(0, 1))
-        self.marginals[1] = Marginal(poisson(5))
-        self.marginals[2] = Marginal(gamma(2, 0, 4))
+        self.vine.set_marginal(0, norm(0, 1))
+        self.vine.set_marginal(1, poisson(5))
+        self.vine.set_marginal(2, gamma(2, 0, 4))
         # Specify pair copulas
-        copulas = np.empty((self.dim - 1, self.dim), dtype=Copula)
-        copulas[0, 0] = GaussianCopula(0.5)
-        copulas[0, 1] = FrankCopula(4)
-        copulas[1, 0] = ClaytonCopula(5)
-        # Set marginals and pair copulas
-        for marginal_index, marginal in enumerate(self.marginals):
-            self.vine.set_marginal(marginal, marginal_index)
-        for layer_index in range(1, self.dim):
-            for copula_index in range(self.dim - layer_index):
-                self.vine.set_copula(copulas[layer_index - 1, copula_index],
-                                     copula_index, layer_index)
+        self.vine.set_copula(1, 0, GaussianCopula(0.5))
+        self.vine.set_copula(1, 1, FrankCopula(4))
+        self.vine.set_copula(2, 0, ClaytonCopula(5))
 
     def tearDown(self):
         '''
@@ -102,8 +93,7 @@ class MixedVineTestCase(TestCase):
         samples = self.vine.rvs(size)
         # Fit mixed vine to samples
         is_continuous = np.full((self.dim), True, dtype=bool)
-        for marginal_index, marginal in enumerate(self.marginals):
-            is_continuous[marginal_index] = marginal.is_continuous
+        is_continuous[1] = False
         vine_est = MixedVine.fit(samples, is_continuous)
         assert_approx_equal(vine_est.root.copulas[0].theta, 0.95341,
                             significant=5)

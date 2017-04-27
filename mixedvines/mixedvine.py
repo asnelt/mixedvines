@@ -55,9 +55,9 @@ class MixedVine(object):
         Generates random variates from the mixed vine.
     entropy(alpha, sem_tol, mc_size)
         Estimates the entropy of the mixed vine.
-    set_marginal(marginal, marginal_index)
+    set_marginal(marginal_index, rv_mixed)
         Sets a particular marginal distribution in the mixed vine tree.
-    set_copula(copula, copula_index, layer_index)
+    set_copula(layer_index, copula_index, copula)
         Sets a particular pair copula in the mixed vine tree.
     fit(samples, is_continuous, vine_type, trunc_level, do_refine)
         Fits the mixed vine to the given samples.
@@ -686,36 +686,36 @@ class MixedVine(object):
             sem = conf * np.sqrt(var_sum / (k * mc_size * (k * mc_size - 1)))
         return ent, sem
 
-    def set_marginal(self, marginal, marginal_index):
+    def set_marginal(self, marginal_index, rv_mixed):
         '''
         Sets a particular marginal distribution in the mixed vine tree for
         manual construction of a mixed vine model.
 
         Parameters
         ----------
-        marginal : Marginal
-            The marginal distribution to be inserted.
         marginal_index : integer
             The index of the marginal in the marginal layer.
+        rv_mixed : scipy.stats.distributions.rv_frozen
+            The marginal distribution to be inserted.
         '''
         layer = self.root
         while not layer.is_marginal_layer():
             layer = layer.input_layer
-        layer.marginals[marginal_index] = marginal
+        layer.marginals[marginal_index] = Marginal(rv_mixed)
 
-    def set_copula(self, copula, copula_index, layer_index):
+    def set_copula(self, layer_index, copula_index, copula):
         '''
         Sets a particular pair copula in the mixed vine tree for manual
         construction of a mixed vine model.
 
         Parameters
         ----------
-        copula : Copula
-            The copula to be inserted.
-        copula_index : integer
-            The index of the copula in its layer.
         layer_index : integer
             The index of the vine layer.
+        copula_index : integer
+            The index of the copula in its layer.
+        copula : Copula
+            The copula to be inserted.
         '''
         layer = self.root
         while not layer.is_marginal_layer():

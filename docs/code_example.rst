@@ -8,7 +8,6 @@ To manually construct and visualize a simple mixed vine model:
 
     from scipy.stats import norm, gamma, poisson
     import numpy as np
-    from mixedvines.marginal import Marginal
     from mixedvines.copula import Copula, GaussianCopula, ClaytonCopula, \
             FrankCopula
     from mixedvines.mixedvine import MixedVine
@@ -18,22 +17,13 @@ To manually construct and visualize a simple mixed vine model:
     vine_type = 'c-vine'  # Canonical vine type
     vine = MixedVine(dim, vine_type)
     # Specify marginals
-    marginals = np.empty(dim, dtype=Marginal)
-    marginals[0] = Marginal(norm(0, 1))
-    marginals[1] = Marginal(poisson(5))
-    marginals[2] = Marginal(gamma(2, 0, 4))
+    vine.set_marginal(0, norm(0, 1))
+    vine.set_marginal(1, poisson(5))
+    vine.set_marginal(2, gamma(2, 0, 4))
     # Specify pair copulas
-    copulas = np.empty((dim - 1, dim), dtype=Copula)
-    copulas[0, 0] = GaussianCopula(0.5)
-    copulas[0, 1] = FrankCopula(4)
-    copulas[1, 0] = ClaytonCopula(5)
-    # Set marginals and pair copulas
-    for marginal_index, marginal in enumerate(marginals):
-        vine.set_marginal(marginal, marginal_index)
-    for layer_index in range(1, dim):
-        for copula_index in range(dim - layer_index):
-            vine.set_copula(copulas[layer_index - 1, copula_index],
-                            copula_index, layer_index)
+    vine.set_copula(1, 0, GaussianCopula(0.5))
+    vine.set_copula(1, 1, FrankCopula(4))
+    vine.set_copula(2, 0, ClaytonCopula(5))
     # Calculate probability density function on lattice
     bnds = np.empty((3), dtype=object)
     bnds[0] = [-3, 3]
