@@ -12,6 +12,7 @@ To manually construct and visualize a simple mixed vine model:
             FrankCopula
     from mixedvines.mixedvine import MixedVine
     import matplotlib.pyplot as plt
+    import itertools
     # Manually construct mixed vine
     dim = 3  # Dimension
     vine_type = 'c-vine'  # Canonical vine type
@@ -38,43 +39,20 @@ To manually construct and visualize a simple mixed vine model:
     size = 100
     samples = vine.rvs(size)
     # Visualize 2d marginals and samples
-    m01 = np.sum(pdf, axis=2).T
-    m02 = np.sum(pdf, axis=1).T
-    m12 = np.sum(pdf, axis=0).T
-    plt.subplot(2, 3, 1)
-    plt.imshow(m01, aspect='auto', interpolation='none', cmap='hot',
-               origin='lower', extent=[bnds[0][0], bnds[0][1], bnds[1][0],
-               bnds[1][1]])
-    plt.ylabel('$x_1$')
-    plt.subplot(2, 3, 2)
-    plt.imshow(m02, aspect='auto', interpolation='none', cmap='hot',
-               origin='lower', extent=[bnds[0][0], bnds[0][1], bnds[2][0],
-               bnds[2][1]])
-    plt.ylabel('$x_2$')
-    plt.subplot(2, 3, 3)
-    plt.imshow(m12, aspect='auto', interpolation='none', cmap='hot',
-               origin='lower', extent=[bnds[1][0], bnds[1][1], bnds[2][0],
-               bnds[2][1]])
-    plt.ylabel('$x_2$')
-    # Plot samples
-    plt.subplot(2, 3, 4)
-    plt.scatter(samples[:, 0], samples[:, 1], s=1)
-    plt.xlim(bnds[0][0], bnds[0][1])
-    plt.ylim(bnds[1][0], bnds[1][1])
-    plt.xlabel('$x_0$')
-    plt.ylabel('$x_1$')
-    plt.subplot(2, 3, 5)
-    plt.scatter(samples[:, 0], samples[:, 2], s=1)
-    plt.xlim(bnds[0][0], bnds[0][1])
-    plt.ylim(bnds[2][0], bnds[2][1])
-    plt.xlabel('$x_0$')
-    plt.ylabel('$x_2$')
-    plt.subplot(2, 3, 6)
-    plt.scatter(samples[:, 1], samples[:, 2], s=1)
-    plt.xlim(bnds[1][0], bnds[1][1])
-    plt.ylim(bnds[2][0], bnds[2][1])
-    plt.xlabel('$x_1$')
-    plt.ylabel('$x_2$')
+    comb = list(itertools.combinations(range(dim), 2))
+    for i, cmb in enumerate(comb):
+        margin = np.sum(pdf, axis=len(comb)-i-1).T
+        plt.subplot(2, len(comb), i + 1)
+        plt.imshow(margin, aspect='auto', interpolation='none', cmap='hot',
+                   origin='lower', extent=[bnds[cmb[0]][0], bnds[cmb[0]][1],
+                                           bnds[cmb[1]][0], bnds[cmb[1]][1]])
+        plt.ylabel('$x_' + str(cmb[1]) + '$')
+        plt.subplot(2, len(comb), len(comb) + i + 1)
+        plt.scatter(samples[:, cmb[0]], samples[:, cmb[1]], s=1)
+        plt.xlim(bnds[cmb[0]][0], bnds[cmb[0]][1])
+        plt.ylim(bnds[cmb[1]][0], bnds[cmb[1]][1])
+        plt.xlabel('$x_' + str(cmb[0]) + '$')
+        plt.ylabel('$x_' + str(cmb[1]) + '$')
     plt.tight_layout()
     plt.show()
 
