@@ -24,11 +24,7 @@ setup(
     version="1.0",
     description=("Package for canonical vine copula trees with mixed"
                  " continuous and discrete marginals."),
-    long_description=("This packge contains a complete framework based on"
-                      " canonical vine copulas for modelling multivariate data"
-                      " that are partly discrete and partly continuous.  The"
-                      " resulting multivariate distributions are flexible with"
-                      " rich dependence structures and arbitrary marginals."),
+    long_description=open('README.rst').read(),
     keywords="copula mixed vine continuous dicrete entropy",
     url="https://github.com/asnelt/mixedvines/",
     author="Arno Onken",
@@ -42,7 +38,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
         ("License :: OSI Approved :: GNU General Public License v3 or later"
-        " (GPLv3+)"),
+         " (GPLv3+)"),
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering"]
