@@ -16,6 +16,7 @@ Contents:
    installation
    usage
    code_example
+   source_code
    api
 
 
