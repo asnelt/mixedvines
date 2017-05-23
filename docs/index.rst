@@ -12,7 +12,8 @@ Contents:
    :maxdepth: 2
 
    intro
-   prerequisites
+   requirements
+   installation
    usage
    code_example
    api

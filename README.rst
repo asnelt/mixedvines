@@ -9,7 +9,7 @@ marginals.  If you use this software for publication, please cite [ONKEN2016]_.
 Description
 -----------
 
-This packge contains a complete framework based on canonical vine copulas for
+This package contains a complete framework based on canonical vine copulas for
 modelling multivariate data that are partly discrete and partly continuous.  The
 resulting multivariate distributions are flexible with rich dependence
 structures and marginals.
@@ -28,12 +28,28 @@ estimate entropy by means of Monte Carlo integration.
 Please see [ONKEN2016]_ for a more detailed description of the framework.
 
 
-Prerequisites
+Documentation
 -------------
 
-The package is compatible with Python 2 and 3 and additionaly only requires
-`SciPy
+The full documentation for the mixedvines package is available at
+`Read the Docs
+<http://mixedvines.readthedocs.io/>`_.
+
+
+Requirements
+------------
+
+The package is compatible with Python 2.7 and 3.x and additionaly requires
+`NumPy and SciPy
 <http://www.scipy.org/install.html>`_.
+
+
+Installation
+------------
+
+To install the mixedvines package, run::
+
+    pip install mixedvines
 
 
 Usage
