@@ -56,10 +56,9 @@ Usage
 -----
 
 Suppose that data are given in a NumPy array ``samples`` with shape ``(n, d)``,
-where ``n`` is the number of samples and ``d`` is the number of elements.
-First, specify which of the elements are continuous.  If, for instance, the
-distribution has three elements and the first and last element are continuous
-whereas the second element is discrete:
+where ``n`` is the number of samples and ``d`` is the number of elements per
+sample.  First, specify which of the elements are continuous.  If, for instance,
+the distribution has three elements and the first and last element are continuous whereas the second element is discrete:
 
 .. code-block:: python
 
@@ -149,13 +148,21 @@ To manually construct and visualize a simple mixed vine model:
 This code shows the 2d marginals and 100 samples of a 3d mixed vine.
 
 
+Source code
+-----------
+
+The source code of the mixedvines package is hosted on
+`GitHub
+<https://github.com/asnelt/mixedvines/>`_.
+
+
 References
 ----------
 
-.. [ONKEN2016] A. Onken and S. Panzeri (2016). Mixed vine copulas as joint models
-   of spike counts and local field potentials.  In D. D. Lee, M. Sugiyama,
-   U. V. Luxburg, I. Guyon and R. Garnett, editors, Advances in Neural
-   Information Processing Systems 29 (NIPS 2016), pages 1325-1333.
+.. [ONKEN2016] A. Onken and S. Panzeri (2016).  Mixed vine copulas as joint
+   models of spike counts and local field potentials.  In D. D. Lee,
+   M. Sugiyama, U. V. Luxburg, I. Guyon and R. Garnett, editors, Advances in
+   Neural Information Processing Systems 29 (NIPS 2016), pages 1325-1333.
 
 
 License

@@ -3,10 +3,10 @@ Usage
 
 
 Suppose that data are given in a NumPy array ``samples`` with shape ``(n, d)``,
-where ``n`` is the number of samples and ``d`` is the number of elements.
-First, specify which of the elements are continuous.  If, for instance, the
-distribution has three elements and the first and last element are continuous
-whereas the second element is discrete:
+where ``n`` is the number of samples and ``d`` is the number of elements per
+sample.  First, specify which of the elements are continuous.  If, for instance,
+the distribution has three elements and the first and last element are
+continuous whereas the second element is discrete:
 
 .. code-block:: python
 
