@@ -15,8 +15,7 @@ To manually construct and visualize a simple mixed vine model:
     import itertools
     # Manually construct mixed vine
     dim = 3  # Dimension
-    vine_type = 'c-vine'  # Canonical vine type
-    vine = MixedVine(dim, vine_type)
+    vine = MixedVine(dim)
     # Specify marginals
     vine.set_marginal(0, norm(0, 1))
     vine.set_marginal(1, poisson(5))
@@ -41,7 +40,9 @@ To manually construct and visualize a simple mixed vine model:
     # Visualize 2d marginals and samples
     comb = list(itertools.combinations(range(dim), 2))
     for i, cmb in enumerate(comb):
-        margin = np.sum(pdf, axis=len(comb)-i-1).T
+        # Sum over all axes not in cmb
+        cmb_inv = tuple(set(range(dim)) - set(cmb))
+        margin = np.sum(pdf, axis=cmb_inv).T
         plt.subplot(2, len(comb), i + 1)
         plt.imshow(margin, aspect='auto', interpolation='none', cmap='hot',
                    origin='lower', extent=[bnds[cmb[0]][0], bnds[cmb[0]][1],

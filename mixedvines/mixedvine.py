@@ -19,7 +19,7 @@
 This module implements a copula vine model with mixed marginals.
 '''
 from __future__ import division
-from scipy.stats import norm
+from scipy.stats import norm, kendalltau
 from scipy.optimize import minimize
 import numpy as np
 from mixedvines.marginal import Marginal
@@ -34,9 +34,6 @@ class MixedVine(object):
     ----------
     dim : integer
         The number of marginals of the vine model.  Must be greater than 1.
-    vine_type : string, optional
-        Type of the vine tree.  Currently, only the canonical vine ('c_vine')
-        is supported.  (Default: 'c-vine')
 
     Attributes
     ----------
@@ -72,7 +69,7 @@ class MixedVine(object):
         Parameters
         ----------
         input_layer : VineLayer, optional
-            The layer providing input.  (Default: None)
+            The layer providing input.  (Default: `None`)
         input_indices : array_like, optional
             Array of length n where n is the number of copulas in this layer.
             Each element in the array is a 2-tuple containing the left and
@@ -228,7 +225,9 @@ class MixedVine(object):
                     logp[:, k] = marginal.logpdf(samples[:, k])
                 else:
                     cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
-                    logp[:, k] = np.log(cdfp[:, k] - cdfm[:, k])
+                    old_settings = np.seterr(divide='ignore')
+                    logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
+                    np.seterr(**old_settings)
             logpdf = logp[:, 0]
             dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
                     'is_continuous': is_continuous}
@@ -424,7 +423,7 @@ class MixedVine(object):
                 Uniform random variates to be made dependent.
             curvs : array_like, optional
                 Array to be filled with dependent conditional uniform random
-                variates by `build_curvs`.  (Default: None)
+                variates by `build_curvs`.  (Default: `None`)
 
             Returns
             -------
@@ -491,12 +490,12 @@ class MixedVine(object):
                 n-by-d matrix of samples where n is the number of samples and d
                 is the number of marginals.
             is_continuous : array_like
-                List of boolean values, where element i is `True` if marginal i
-                is continuous.
+                List of boolean values of length d, where d is the number of
+                marginals and element i is `True` if marginal i is continuous.
             trunc_level : integer, optional
                 Layer level to truncate the vine at.  Copulas in layers beyond
                 are just independence copulas.  If the level is `None`, then
-                the vine is not truncated.  (Default: None)
+                the vine is not truncated.  (Default: `None`)
 
             Returns
             -------
@@ -586,14 +585,11 @@ class MixedVine(object):
                         bnds.append(bnd)
             return bnds
 
-    def __init__(self, dim, vine_type='c-vine'):
+    def __init__(self, dim):
         if dim < 2:
             raise ValueError("the number of marginals 'dim' must be greater"
                              " than 1")
-        if vine_type != 'c-vine':
-            raise NotImplementedError
-        self.vine_type = vine_type
-        self.root = self._construct_c_vine(dim)
+        self.root = self._construct_c_vine(np.arange(dim))
 
     def logpdf(self, samples):
         '''
@@ -727,8 +723,8 @@ class MixedVine(object):
         layer.copulas[copula_index] = copula
 
     @staticmethod
-    def fit(samples, is_continuous, vine_type='c-vine', trunc_level=None,
-            do_refine=False):
+    def fit(samples, is_continuous, trunc_level=None, do_refine=False,
+            keep_order=False):
         '''
         Fits the mixed vine to the given samples.
 
@@ -738,28 +734,29 @@ class MixedVine(object):
             n-by-d matrix of samples where n is the number of samples and d is
             the number of marginals.
         is_continuous : array_like
-            List of boolean values, where element i is `True` if marginal i is
-            continuous.
-        vine_type : string, optional
-            Type of the vine tree.  Currently, only the canonical vine
-            ('c_vine') is supported.  (Default: 'c-vine')
+            List of boolean values of length d, where d is the number of
+            marginals and element i is `True` if marginal i is continuous.
         trunc_level : integer, optional
             Layer level to truncate the vine at.  Copulas in layers beyond are
             just independence copulas.  If the level is `None`, then the vine
-            is not truncated.  (Default: None)
+            is not truncated.  (Default: `None`)
         do_refine : boolean, optional
             If `True`, then all pair copula parameters are optimized jointly at
-            the end.  (Default: False)
+            the end.  (Default: `False`)
+        keep_order : boolean, optional
+            If `False`, then a heuristic is used to select the vine structure.
+            (Default: `False`)
 
         Returns
         -------
         vine : MixedVine
             The mixed vine with parameters fitted to `samples`.
         '''
-        if vine_type != 'c-vine':
-            raise NotImplementedError
         dim = samples.shape[1]
-        vine = MixedVine(dim, vine_type)
+        vine = MixedVine(dim)
+        if not keep_order:
+            element_order = MixedVine._heuristic_element_order(samples)
+            vine.root = MixedVine._construct_c_vine(element_order)
         vine.root.fit(samples, is_continuous, trunc_level)
         if do_refine:
             # Refine copula parameters
@@ -780,27 +777,67 @@ class MixedVine(object):
         return vine
 
     @staticmethod
-    def _construct_c_vine(dim):
+    def _heuristic_element_order(samples):
         '''
-        Constructs a c-vine tree without setting marginals or copulas.
+        Finds an order of elements that heuristically facilitates vine
+        modelling.  For this purpose, Kendall's tau is calculated between
+        samples of pairs of elements and elements are scored according to the
+        sum of absolute Kendall's tau of pairs the elements appear in.
 
         Parameters
         ----------
-        dim : integer
-            The number of marginals of the canonical vine tree.
+        samples : array_like
+            n-by-d matrix of samples where n is the number of samples and d is
+            the number of marginals.
+
+        Returns
+        -------
+        order : array_like
+            Permutation of all element indices reflecting descending scores.
+        '''
+        dim = samples.shape[1]
+        # Score elements according to total absolute Kendall's tau
+        score = np.zeros(dim)
+        for i in range(1, dim):
+            for j in range(i):
+                tau, _ = kendalltau(samples[:, i], samples[:, j])
+                score[i] += tau
+                score[j] += tau
+        # Get order indices for descending score
+        order = score.argsort()[::-1]
+        return order
+
+    @staticmethod
+    def _construct_c_vine(element_order):
+        '''
+        Constructs a c-vine tree without setting marginals or copulas.  The
+        c-vine tree is constructed according to the input element order.  The
+        index of the element with the most important dependencies should come
+        first in the input argument.
+
+        Parameters
+        ----------
+        element_order : array_like
+            Permutation of all element indices.
 
         Returns
         -------
         root : VineLayer
             The root layer of the canonical vine tree.
         '''
+        dim = len(element_order)
         marginals = np.empty(dim, dtype=Marginal)
         layer = MixedVine.VineLayer(marginals=marginals)
+        identity_order = np.arange(dim - 1)
         for i in range(1, dim):
             input_indices = []
+            if i == 1:
+                order = element_order
+            else:
+                order = identity_order
             # For each successor layer, generate c-vine input indices
             for j in range(dim - i):
-                input_indices.append(np.array([0, j+1]))
+                input_indices.append(np.array([order[0], order[j+1]]))
             copulas = np.empty(len(input_indices), dtype=Copula)
             # Generate vine layer
             layer = MixedVine.VineLayer(input_layer=layer,

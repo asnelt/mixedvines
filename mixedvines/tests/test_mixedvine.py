@@ -20,9 +20,7 @@ This module implements tests for the mixedvine module.
 '''
 from unittest import TestCase
 from scipy.stats import norm, gamma, poisson
-from mixedvines.marginal import Marginal
-from mixedvines.copula import Copula, GaussianCopula, ClaytonCopula, \
-        FrankCopula
+from mixedvines.copula import GaussianCopula, ClaytonCopula, FrankCopula
 from mixedvines.mixedvine import MixedVine
 import numpy as np
 from numpy.testing import assert_approx_equal, assert_allclose
@@ -43,8 +41,7 @@ class MixedVineTestCase(TestCase):
         np.random.seed(0)
         # Manually construct mixed vine
         self.dim = 3  # Dimension
-        vine_type = 'c-vine'  # Canonical vine type
-        self.vine = MixedVine(self.dim, vine_type)
+        self.vine = MixedVine(self.dim)
         # Specify marginals
         self.vine.set_marginal(0, norm(0, 1))
         self.vine.set_marginal(1, poisson(5))
@@ -95,10 +92,10 @@ class MixedVineTestCase(TestCase):
         is_continuous = np.full((self.dim), True, dtype=bool)
         is_continuous[1] = False
         vine_est = MixedVine.fit(samples, is_continuous)
-        assert_approx_equal(vine_est.root.copulas[0].theta, 0.95341,
+        assert_approx_equal(vine_est.root.copulas[0].theta, 0.77490,
                             significant=5)
         assert_approx_equal(vine_est.root.input_layer.copulas[0].theta,
-                            0.48148, significant=5)
+                            4.01646, significant=5)
         assert_approx_equal(vine_est.root.input_layer.copulas[1].theta,
                             4.56877, significant=5)
 

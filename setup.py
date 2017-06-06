@@ -21,7 +21,7 @@ from setuptools import setup
 
 setup(
     name="mixedvines",
-    version="1.0",
+    version="1.1",
     description=("Package for canonical vine copula trees with mixed"
                  " continuous and discrete marginals."),
     long_description=open('README.rst').read(),
@@ -31,7 +31,9 @@ setup(
     author_email="asnelt@asnelt.org",
     license="GPLv3+",
     packages=["mixedvines"],
-    install_requires=["scipy"],
+    install_requires=[
+        "numpy",
+        "scipy"],
     test_suite="nose2.collector.collector",
     tests_require=["nose2"],
     classifiers=[

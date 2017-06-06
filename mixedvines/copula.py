@@ -42,10 +42,10 @@ class Copula(ABC):
     ----------
     theta : array_like, optional
         Parameter array of the copula.  The number of elements depends on the
-        copula family.  (Default: None)
+        copula family.  (Default: `None`)
     rotation : string, optional
         Clockwise rotation of the copula.  Can be one of the elements of
-        `Copula.rotation_options` or `None`.  (Default: None)
+        `Copula.rotation_options` or `None`.  (Default: `None`)
 
     Attributes
     ----------
@@ -567,15 +567,18 @@ class GaussianCopula(Copula):
         lower = np.full(2, -np.inf)
         upper = norm.ppf(samples)
         limit_flags = np.zeros(2)
+        if upper.shape[0] > 0:
 
-        def func1d(upper1d):
-            '''
-            Calculates the multivariate normal cumulative distribution
-            function of a single sample.
-            '''
-            return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
+            def func1d(upper1d):
+                '''
+                Calculates the multivariate normal cumulative distribution
+                function of a single sample.
+                '''
+                return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
 
-        vals = np.apply_along_axis(func1d, -1, upper)
+            vals = np.apply_along_axis(func1d, -1, upper)
+        else:
+            vals = np.empty((0, ))
         old_settings = np.seterr(divide='ignore')
         vals = np.log(vals)
         np.seterr(**old_settings)
@@ -585,9 +588,14 @@ class GaussianCopula(Copula):
         return vals
 
     def _ccdf(self, samples):
-        nrvs = norm.ppf(samples)
-        vals = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
-                        / np.sqrt(1 - self.theta**2))
+        vals = np.zeros(samples.shape[0])
+        # Avoid subtraction of infinities
+        neqz = np.bitwise_and(np.any(samples > 0.0, axis=1),
+                              np.any(samples < 1.0, axis=1))
+        nrvs = norm.ppf(samples[neqz, :])
+        vals[neqz] = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
+                              / np.sqrt(1 - self.theta**2))
+        vals[np.invert(neqz)] = norm.cdf(0.0)
         return vals
 
     def _ppcf(self, samples):
