@@ -268,16 +268,17 @@ class Copula(ABC):
         # account.
         if self.rotation == '90°':
             old_settings = np.seterr(divide='ignore')
-            vals = np.log(samples[:, 0] - np.exp(vals))
+            vals = np.log(np.maximum(0, samples[:, 0] - np.exp(vals)))
             np.seterr(**old_settings)
         elif self.rotation == '180°':
             old_settings = np.seterr(divide='ignore')
-            vals = np.log((1 - samples[:, 0]) + (1 - samples[:, 1]) - 1.0
-                          + np.exp(vals))
+            vals = np.log(np.maximum(0,
+                                     (1 - samples[:, 0]) + (1 - samples[:, 1])
+                                     - 1.0 + np.exp(vals)))
             np.seterr(**old_settings)
         elif self.rotation == '270°':
             old_settings = np.seterr(divide='ignore')
-            vals = np.log(samples[:, 1] - np.exp(vals))
+            vals = np.log(np.maximum(0, samples[:, 1] - np.exp(vals)))
             np.seterr(**old_settings)
         return vals
 
