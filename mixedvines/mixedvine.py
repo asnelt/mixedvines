@@ -377,7 +377,8 @@ class MixedVine(object):
             '''
             (urvs, curvs) = self.make_dependent(urvs, curvs)
             if self.is_marginal_layer():
-                curvs[:, 0] = urvs[:, 0]
+                first_marginal_index = self.output_layer.input_indices[0][0]
+                curvs[:, first_marginal_index] = urvs[:, first_marginal_index]
             else:
                 copula_index = 0
                 curv_index = self.input_marginal_indices[copula_index][1]
