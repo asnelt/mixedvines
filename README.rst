@@ -63,9 +63,7 @@ continuous whereas the second element is discrete:
 
 .. code-block:: python
 
-    import numpy as np
-    is_continuous = np.full((3), True, dtype=bool)
-    is_continuous[1] = False
+    is_continuous = [True, False, True]
 
 To fit a mixed vine to the samples:
 
@@ -82,15 +80,6 @@ calculate their density and estimate the distribution entropy in units of bits:
     samples = vine.rvs(size=100)
     logpdf = vine.logpdf(samples)
     (entropy, standard_error_mean) = vine.entropy(sem_tol=1e-2)
-
-Note that for the canonical vine, the order of elements is important.  Elements
-should be sorted according to the importance of their dependencies to other
-elements where elements with important dependencies to many other elements
-should come first.  A heuristic way to select the order of elements is to
-calculate Kendall's tau between all element pairs
-(see ``scipy.stats.kendalltau``), to obtain a score for each element by summing
-the tau's of the pairs the element occurs in and to sort elements in descending
-order according to their scores.
 
 To manually construct and visualize a simple mixed vine model:
 

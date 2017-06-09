@@ -37,8 +37,6 @@ class MixedVine(object):
 
     Attributes
     ----------
-    vine_type : string
-        Type of the vine tree.
     root : VineLayer
         The root layer of the vine tree.
 
@@ -56,7 +54,7 @@ class MixedVine(object):
         Sets a particular marginal distribution in the mixed vine tree.
     set_copula(layer_index, copula_index, copula)
         Sets a particular pair copula in the mixed vine tree.
-    fit(samples, is_continuous, vine_type, trunc_level, do_refine)
+    fit(samples, is_continuous, trunc_level, do_refine, keep_order)
         Fits the mixed vine to the given samples.
     '''
 
@@ -228,7 +226,7 @@ class MixedVine(object):
                     old_settings = np.seterr(divide='ignore')
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
                     np.seterr(**old_settings)
-            logpdf = logp[:, 0]
+            logpdf = logp[:, self.output_layer.input_indices[0][0]]
             dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
                     'is_continuous': is_continuous}
             return dout
@@ -783,7 +781,7 @@ class MixedVine(object):
         Finds an order of elements that heuristically facilitates vine
         modelling.  For this purpose, Kendall's tau is calculated between
         samples of pairs of elements and elements are scored according to the
-        sum of absolute Kendall's tau of pairs the elements appear in.
+        sum of absolute Kendall's taus of pairs the elements appear in.
 
         Parameters
         ----------
@@ -802,8 +800,8 @@ class MixedVine(object):
         for i in range(1, dim):
             for j in range(i):
                 tau, _ = kendalltau(samples[:, i], samples[:, j])
-                score[i] += tau
-                score[j] += tau
+                score[i] += np.abs(tau)
+                score[j] += np.abs(tau)
         # Get order indices for descending score
         order = score.argsort()[::-1]
         return order
