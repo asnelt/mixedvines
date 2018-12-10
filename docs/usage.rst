@@ -16,7 +16,7 @@ To fit a mixed vine to the samples:
 
 .. code-block:: python
 
-    from mixedvine import MixedVine
+    from mixedvines.mixedvine import MixedVine
     vine = MixedVine.fit(samples, is_continuous)
 
 ``vine`` is now a ``MixedVine`` object.  Note that for the canonical vine, the

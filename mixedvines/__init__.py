@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Arno Onken
+# Copyright (C) 2017, 2018 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -14,3 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import absolute_import
+from . import marginal
+from . import copula
+from . import mixedvine
+from .mixedvine import MixedVine

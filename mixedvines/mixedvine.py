@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017 Arno Onken
+# Copyright (C) 2017, 2018 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -18,12 +18,13 @@
 '''
 This module implements a copula vine model with mixed marginals.
 '''
+from __future__ import absolute_import
 from __future__ import division
 from scipy.stats import norm, kendalltau
 from scipy.optimize import minimize
 import numpy as np
-from mixedvines.marginal import Marginal
-from mixedvines.copula import Copula, IndependenceCopula
+from .marginal import Marginal
+from .copula import Copula, IndependenceCopula
 
 
 class MixedVine(object):

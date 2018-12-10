@@ -69,7 +69,7 @@ To fit a mixed vine to the samples:
 
 .. code-block:: python
 
-    from mixedvine import MixedVine
+    from mixedvines.mixedvine import MixedVine
     vine = MixedVine.fit(samples, is_continuous)
 
 ``vine`` is now a ``MixedVine`` object.  To draw samples from the distribution,
@@ -158,7 +158,7 @@ References
 License
 -------
 
-Copyright (C) 2017 Arno Onken
+Copyright (C) 2017, 2018 Arno Onken
 
 This file is part of the mixedvines package.
 
