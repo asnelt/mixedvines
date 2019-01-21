@@ -510,7 +510,7 @@ class MixedVine(object):
                                                      is_continuous[i])
                     output_urvs[:, i] = self.marginals[i].cdf(samples[:, i])
             else:
-                input_urvs = self.input_layer.fit(samples, is_continuous)
+                input_urvs = self.input_layer.fit(samples, is_continuous, trunc_level)
                 truncate = trunc_level and samples.shape[1] \
                     - len(self.input_indices) > trunc_level - 1
                 output_urvs = np.zeros((samples.shape[0],
