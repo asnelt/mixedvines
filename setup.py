@@ -22,10 +22,11 @@ from setuptools import setup
 
 setup(
     name="mixedvines",
-    version="1.2.1",
+    version="1.2.2",
     description=("Package for canonical vine copula trees with mixed"
                  " continuous and discrete marginals."),
-    long_description=open('README.rst').read(),
+    long_description=open("README.rst").read(),
+    long_description_content_type="text/markdown",
     keywords="copula mixed vine continuous dicrete entropy",
     url="https://github.com/asnelt/mixedvines/",
     author="Arno Onken",
