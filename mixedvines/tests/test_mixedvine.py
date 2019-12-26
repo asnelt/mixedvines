@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017 Arno Onken
+# Copyright (C) 2017-2019 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -19,11 +19,11 @@
 This module implements tests for the mixedvine module.
 '''
 from unittest import TestCase
+import numpy as np
+from numpy.testing import assert_approx_equal, assert_allclose
 from scipy.stats import norm, gamma, poisson
 from mixedvines.copula import GaussianCopula, ClaytonCopula, FrankCopula
 from mixedvines.mixedvine import MixedVine
-import numpy as np
-from numpy.testing import assert_approx_equal, assert_allclose
 
 
 class MixedVineTestCase(TestCase):

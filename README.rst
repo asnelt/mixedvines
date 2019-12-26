@@ -158,7 +158,7 @@ References
 License
 -------
 
-Copyright (C) 2017, 2018 Arno Onken
+Copyright (C) 2017-2019 Arno Onken
 
 This file is part of the mixedvines package.
 

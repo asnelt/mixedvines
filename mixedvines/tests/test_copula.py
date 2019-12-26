@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017 Arno Onken
+# Copyright (C) 2017-2019 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -18,10 +18,10 @@
 '''
 This module implements tests for the copula module.
 '''
-from mixedvines.copula import IndependenceCopula, GaussianCopula, \
-        ClaytonCopula, FrankCopula
 import numpy as np
 from numpy.testing import assert_allclose
+from mixedvines.copula import IndependenceCopula, GaussianCopula, \
+        ClaytonCopula, FrankCopula
 
 
 def test_logpdf():

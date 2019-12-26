@@ -1,4 +1,5 @@
-# Copyright (C) 2017, 2018 Arno Onken
+# -*- coding: utf-8 -*-
+# Copyright (C) 2017-2019 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -21,7 +22,7 @@ from setuptools import setup
 
 setup(
     name="mixedvines",
-    version="1.2.0",
+    version="1.2.1",
     description=("Package for canonical vine copula trees with mixed"
                  " continuous and discrete marginals."),
     long_description=open('README.rst').read(),

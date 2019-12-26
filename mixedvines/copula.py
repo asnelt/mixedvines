@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017 Arno Onken
+# Copyright (C) 2017-2019 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
