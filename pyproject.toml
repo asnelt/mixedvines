@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019, 2021 Arno Onken
+# Copyright (C) 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -15,9 +14,16 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-Setup for the mixedvines package.
-'''
-import setuptools
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
 
-setuptools.setup()
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "mixedvines/tests"
+]

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019 Arno Onken
+# Copyright (C) 2017-2019, 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -19,7 +19,6 @@
 This module implements univariate marginal distribution that are either
 continuous or discrete.
 '''
-from __future__ import division
 from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
 
@@ -54,7 +53,7 @@ class Marginal(object):
         Cumulative distribution function.
     ppf(samples)
         Inverse of the cumulative distribution function.
-    rvs(size=1)
+    rvs(size, random_state)
         Generate random variates.
     fit(samples, is_continuous)
         Fit a distribution to samples.
@@ -147,21 +146,26 @@ class Marginal(object):
         '''
         return self.rv_mixed.ppf(samples)
 
-    def rvs(self, size=1):
+    def rvs(self, size=1, random_state=None):
         '''
         Generates random variates from the distribution.
 
         Parameters
         ----------
-        size : integer, optional
+        size : int, optional
             The number of samples to generate.  (Default: 1)
+        random_state : {None, int, RandomState, Generator}, optional
+            The random state to use for random variate generation.  `None`
+            corresponds to the `RandomState` singleton.  For an int, a new
+            `RandomState` is generated and seeded.  For a `RandomState` or
+            `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
         array_like
             Array of samples.
         '''
-        return self.rv_mixed.rvs(size)
+        return self.rv_mixed.rvs(size, random_state=random_state)
 
     @staticmethod
     def fit(samples, is_continuous):

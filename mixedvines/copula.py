@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019 Arno Onken
+# Copyright (C) 2017-2019, 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -18,23 +18,14 @@
 '''
 This module implements copula distributions.
 '''
-from __future__ import division
 import sys
 import abc
 from scipy.optimize import minimize
-from scipy.stats import norm, uniform, mvn
+from scipy.stats import norm, uniform, multivariate_normal
 import numpy as np
 
 
-# Ensure abstract base class compatibility
-if sys.version_info[0] == 3 and sys.version_info[1] >= 4 \
-        or sys.version_info[0] > 3:
-    ABC = abc.ABC
-else:
-    ABC = abc.ABCMeta('ABC', (), {})
-
-
-class Copula(ABC):
+class Copula(abc.ABC):
     '''
     This abstract class represents a copula.
 
@@ -64,11 +55,11 @@ class Copula(ABC):
         Log of the cumulative distribution function.
     cdf(samples)
         Cumulative distribution function.
-    ccdf(samples, axis=1)
+    ccdf(samples, axis)
         Conditional cumulative distribution function.
-    ppcf(samples, axis=1)
+    ppcf(samples, axis)
         Inverse of the conditional cumulative distribution function.
-    rvs(size=1)
+    rvs(size=1, random_state)
         Generate random variates.
     estimate_theta(samples)
         Estimates the `theta` parameters from the given samples.
@@ -309,7 +300,7 @@ class Copula(ABC):
             Function to be called with `samples` as argument.
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        axis : integer
+        axis : int
             The axis to condition the cumulative distribution function on.
 
         Returns
@@ -368,7 +359,7 @@ class Copula(ABC):
         ----------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        axis : integer, optional
+        axis : int, optional
             The axis to condition the cumulative distribution function on.
             (Default: 1)
 
@@ -409,7 +400,7 @@ class Copula(ABC):
         ----------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        axis : integer, optional
+        axis : int, optional
             The axis to condition the cumulative distribution function on.
             (Default: 1)
 
@@ -421,21 +412,27 @@ class Copula(ABC):
         '''
         return self.__axis_wrapper(self._ppcf, samples, axis)
 
-    def rvs(self, size=1):
+    def rvs(self, size=1, random_state=None):
         '''
         Generates random variates from the copula.
 
         Parameters
         ----------
-        size : integer, optional
+        size : int, optional
             The number of samples to generate.  (Default: 1)
+        random_state : {None, int, RandomState, Generator}, optional
+            The random state to use for random variate generation.  `None`
+            corresponds to the `RandomState` singleton.  For an int, a new
+            `RandomState` is generated and seeded.  For a `RandomState` or
+            `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
         '''
-        samples = np.stack((uniform.rvs(size=size), uniform.rvs(size=size)),
+        samples = np.stack((uniform.rvs(size=size, random_state=random_state),
+                            uniform.rvs(size=size, random_state=random_state)),
                            axis=1)
         samples[:, 0] = self.ppcf(samples)
         return samples
@@ -565,24 +562,9 @@ class GaussianCopula(Copula):
         return vals
 
     def _logcdf(self, samples):
-        lower = np.full(2, -np.inf)
         upper = norm.ppf(samples)
-        limit_flags = np.zeros(2)
-        if upper.shape[0] > 0:
-
-            def func1d(upper1d):
-                '''
-                Calculates the multivariate normal cumulative distribution
-                function of a single sample.
-                '''
-                return mvn.mvndst(lower, upper1d, limit_flags, self.theta)[1]
-
-            vals = np.apply_along_axis(func1d, -1, upper)
-        else:
-            vals = np.empty((0, ))
-        old_settings = np.seterr(divide='ignore')
-        vals = np.log(vals)
-        np.seterr(**old_settings)
+        cov = [[1.0, self.theta], [self.theta, 1.0]]
+        vals = multivariate_normal.logcdf(upper, None, cov)
         vals[np.any(samples == 0.0, axis=1)] = -np.inf
         vals[samples[:, 0] == 1.0] = np.log(samples[samples[:, 0] == 1.0, 1])
         vals[samples[:, 1] == 1.0] = np.log(samples[samples[:, 1] == 1.0, 0])

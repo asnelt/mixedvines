@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019 Arno Onken
+# Copyright (C) 2017-2019, 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -18,9 +18,7 @@
 '''
 This module implements a copula vine model with mixed marginals.
 '''
-from __future__ import absolute_import
-from __future__ import division
-from scipy.stats import norm, kendalltau
+from scipy.stats import kendalltau, norm, uniform
 from scipy.optimize import minimize
 import numpy as np
 from .marginal import Marginal
@@ -33,7 +31,7 @@ class MixedVine(object):
 
     Parameters
     ----------
-    dim : integer
+    dim : int
         The number of marginals of the vine model.  Must be greater than 1.
 
     Attributes
@@ -47,14 +45,16 @@ class MixedVine(object):
         Calculates the log of the probability density function.
     pdf(samples)
         Calculates the probability density function.
-    rvs(size)
+    rvs(size, random_state)
         Generates random variates from the mixed vine.
-    entropy(alpha, sem_tol, mc_size)
+    entropy(alpha, sem_tol, mc_size, random_state)
         Estimates the entropy of the mixed vine.
     set_marginal(marginal_index, rv_mixed)
         Sets a particular marginal distribution in the mixed vine tree.
     set_copula(layer_index, copula_index, copula)
         Sets a particular pair copula in the mixed vine tree.
+    is_continuous()
+        Determines which marginals are continuous.
     fit(samples, is_continuous, trunc_level, do_refine, keep_order)
         Fits the mixed vine to the given samples.
     '''
@@ -113,7 +113,7 @@ class MixedVine(object):
             Generates a conditional sample for `build_curvs`.
         make_dependent(urvs, curvs)
             Introduces dependencies between the uniform random variates `urvs`.
-        rvs(size)
+        rvs(size, random_state)
             Generates random variates from the mixed vine.
         fit(samples, is_continuous, trunc_level)
             Fits a vine tree.
@@ -123,6 +123,8 @@ class MixedVine(object):
             Sets all copula parameters to the values stored in params.
         get_all_bounds()
             Collects the bounds of all copula parameters.
+        is_continuous()
+            Determines which marginals are continuous.
         '''
 
         def __init__(self, input_layer=None, input_indices=None,
@@ -393,7 +395,7 @@ class MixedVine(object):
                 Right input for the marginal layer.
             curvs : array_like
                 Conditional uniform random variates.
-            copula_index : integer
+            copula_index : int
                 Index of the copula to be used to generate the dependent
                 sample.
 
@@ -445,15 +447,20 @@ class MixedVine(object):
                 layer = layer.input_layer
             return (urvs, curvs)
 
-        def rvs(self, size=1):
+        def rvs(self, size=1, random_state=None):
             '''
             Generates random variates from the mixed vine.  Currently assumes a
             c-vine structure.
 
             Parameters
             ----------
-            size : integer, optional
+            size : int, optional
                 The number of samples to generate.  (Default: 1)
+            random_state : {None, int, RandomState, Generator}, optional
+                The random state to use for random variate generation.  `None`
+                corresponds to the `RandomState` singleton.  For an int, a
+                new `RandomState` is generated and seeded.  For a `RandomState`
+                or `Generator`, the object is used.  (Default: `None`)
 
             Returns
             -------
@@ -467,13 +474,14 @@ class MixedVine(object):
                 while not layer.is_marginal_layer():
                     layer = layer.input_layer
                 dim = len(layer.marginals)
-                samples = np.random.random(size=[size, dim])
+                samples = uniform.rvs(size=[size, dim],
+                                      random_state=random_state)
                 (samples, _) = self.make_dependent(samples)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
                     samples[:, i] = marginal.ppf(samples[:, i])
                 return samples
-            return self.output_layer.rvs(size)
+            return self.output_layer.rvs(size=size, random_state=random_state)
 
         def fit(self, samples, is_continuous, trunc_level=None):
             '''
@@ -489,7 +497,7 @@ class MixedVine(object):
             is_continuous : array_like
                 List of boolean values of length d, where d is the number of
                 marginals and element i is `True` if marginal i is continuous.
-            trunc_level : integer, optional
+            trunc_level : int, optional
                 Layer level to truncate the vine at.  Copulas in layers beyond
                 are just independence copulas.  If the level is `None`, then
                 the vine is not truncated.  (Default: `None`)
@@ -507,7 +515,8 @@ class MixedVine(object):
                                                      is_continuous[i])
                     output_urvs[:, i] = self.marginals[i].cdf(samples[:, i])
             else:
-                input_urvs = self.input_layer.fit(samples, is_continuous, trunc_level)
+                input_urvs = self.input_layer.fit(samples, is_continuous,
+                                                  trunc_level)
                 truncate = trunc_level and samples.shape[1] \
                     - len(self.input_indices) > trunc_level - 1
                 output_urvs = np.zeros((samples.shape[0],
@@ -582,6 +591,24 @@ class MixedVine(object):
                         bnds.append(bnd)
             return bnds
 
+        def is_continuous(self):
+            '''
+            Determines which marginals are continuous.
+
+            Returns
+            -------
+            vals : array_like
+                List of boolean values of length d, where d is the number of
+                marginals and element i is `True` if marginal i is continuous.
+            '''
+            if self.is_marginal_layer():
+                vals = np.zeros(len(self.marginals), dtype=bool)
+                for k, marginal in enumerate(self.marginals):
+                    vals[k] = marginal.is_continuous
+                return vals
+            else:
+                return self.input_layer.is_continuous()
+
     def __init__(self, dim):
         if dim < 2:
             raise ValueError("the number of marginals 'dim' must be greater"
@@ -622,14 +649,19 @@ class MixedVine(object):
         '''
         return np.exp(self.logpdf(samples))
 
-    def rvs(self, size=1):
+    def rvs(self, size=1, random_state=None):
         '''
         Generates random variates from the mixed vine.
 
         Parameters
         ----------
-        size : integer, optional
+        size : int, optional
             The number of samples to generate.  (Default: 1)
+        random_state : {None, int, RandomState, Generator}, optional
+            The random state to use for random variate generation.  `None`
+            corresponds to the `RandomState` singleton.  For an int, a new
+            `RandomState` is generated and seeded.  For a `RandomState` or
+            `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
@@ -637,9 +669,10 @@ class MixedVine(object):
             n-by-d matrix of samples where n is the number of samples and d is
             the number of marginals.
         '''
-        return self.root.rvs(size)
+        return self.root.rvs(size=size, random_state=random_state)
 
-    def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000):
+    def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000,
+                random_state=None):
         '''
         Estimates the entropy of the mixed vine.
 
@@ -649,9 +682,14 @@ class MixedVine(object):
             Significance level of the entropy estimate.  (Default: 0.05)
         sem_tol : float, optional
             Maximum standard error as a stopping criterion.  (Default: 1e-3)
-        mc_size : integer, optional
+        mc_size : int, optional
             Number of samples that are drawn in each iteration of the Monte
             Carlo estimation.  (Default: 1000)
+        random_state : {None, int, RandomState, Generator}, optional
+            The random state to use for random variate generation.  `None`
+            corresponds to the `RandomState` singleton.  For an int, a new
+            `RandomState` is genered and seeded.  For a `RandomState` or
+            `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
@@ -668,7 +706,7 @@ class MixedVine(object):
         k = 0
         while sem >= sem_tol:
             # Generate samples
-            samples = self.rvs(mc_size)
+            samples = self.rvs(size=mc_size, random_state=random_state)
             logp = self.logpdf(samples)
             log2p = logp[np.isfinite(logp)] / np.log(2)
             k += 1
@@ -686,7 +724,7 @@ class MixedVine(object):
 
         Parameters
         ----------
-        marginal_index : integer
+        marginal_index : int
             The index of the marginal in the marginal layer.
         rv_mixed : scipy.stats.distributions.rv_frozen
             The marginal distribution to be inserted.
@@ -703,9 +741,9 @@ class MixedVine(object):
 
         Parameters
         ----------
-        layer_index : integer
+        layer_index : int
             The index of the vine layer.
-        copula_index : integer
+        copula_index : int
             The index of the copula in its layer.
         copula : Copula
             The copula to be inserted.
@@ -718,6 +756,18 @@ class MixedVine(object):
         for _ in range(layer_index):
             layer = layer.output_layer
         layer.copulas[copula_index] = copula
+
+    def is_continuous(self):
+        '''
+        Determines which marginals are continuous.
+
+        Returns
+        -------
+        is_continuous : array_like
+            List of boolean values of length d, where d is the number of
+            marginals and element i is `True` if marginal i is continuous.
+        '''
+        return self.root.is_continuous()
 
     @staticmethod
     def fit(samples, is_continuous, trunc_level=None, do_refine=False,
@@ -733,7 +783,7 @@ class MixedVine(object):
         is_continuous : array_like
             List of boolean values of length d, where d is the number of
             marginals and element i is `True` if marginal i is continuous.
-        trunc_level : integer, optional
+        trunc_level : int, optional
             Layer level to truncate the vine at.  Copulas in layers beyond are
             just independence copulas.  If the level is `None`, then the vine
             is not truncated.  (Default: `None`)

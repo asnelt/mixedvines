@@ -39,7 +39,7 @@ The full documentation for the mixedvines package is available at
 Requirements
 ------------
 
-The package is compatible with Python 2.7 and 3.x and additionaly requires
+The package requires Python 3.4 or greater and additionaly requires
 `NumPy and SciPy
 <http://www.scipy.org/install.html>`_.
 
@@ -158,7 +158,7 @@ References
 License
 -------
 
-Copyright (C) 2017-2019 Arno Onken
+Copyright (C) 2017-2019, 2021 Arno Onken
 
 This file is part of the mixedvines package.
 
