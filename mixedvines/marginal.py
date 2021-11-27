@@ -15,18 +15,20 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements univariate marginal distribution that are either
-continuous or discrete.
-'''
+"""This module implements univariate marginal distributions.
+
+Classes
+-------
+Marginal
+    Discrete or continuous marginal distribution.
+
+"""
 from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
 
 
-class Marginal(object):
-    '''
-    This class represents a marginal distribution which can be continuous or
-    discrete.
+class Marginal:
+    """Represents a marginal distribution which can be continuous or discrete.
 
     Parameters
     ----------
@@ -57,15 +59,14 @@ class Marginal(object):
         Generate random variates.
     fit(samples, is_continuous)
         Fit a distribution to samples.
-    '''
+    """
 
     def __init__(self, rv_mixed):
         self.rv_mixed = rv_mixed
         self.is_continuous = isinstance(rv_mixed.dist, rv_continuous)
 
     def logpdf(self, samples):
-        '''
-        Calculates the log of the probability density function.
+        """Calculates the log of the probability density function.
 
         Parameters
         ----------
@@ -76,14 +77,13 @@ class Marginal(object):
         -------
         ndarray
             Log of the probability density function evaluated at `samples`.
-        '''
+        """
         if self.is_continuous:
             return self.rv_mixed.logpdf(samples)
         return self.rv_mixed.logpmf(samples)
 
     def pdf(self, samples):
-        '''
-        Calculates the probability density function.
+        """Calculates the probability density function.
 
         Parameters
         ----------
@@ -94,12 +94,11 @@ class Marginal(object):
         -------
         ndarray
             Probability density function evaluated at `samples`.
-        '''
+        """
         return np.exp(self.logpdf(samples))
 
     def logcdf(self, samples):
-        '''
-        Calculates the log of the cumulative distribution function.
+        """Calculates the log of the cumulative distribution function.
 
         Parameters
         ----------
@@ -110,12 +109,11 @@ class Marginal(object):
         -------
         ndarray
             Log of the cumulative distribution function evaluated at `samples`.
-        '''
+        """
         return self.rv_mixed.logcdf(samples)
 
     def cdf(self, samples):
-        '''
-        Calculates the cumulative distribution function.
+        """Calculates the cumulative distribution function.
 
         Parameters
         ----------
@@ -126,12 +124,11 @@ class Marginal(object):
         -------
         ndarray
             Cumulative distribution function evaluated at `samples`.
-        '''
+        """
         return np.exp(self.logcdf(samples))
 
     def ppf(self, samples):
-        '''
-        Calculates the inverse of the cumulative distribution function.
+        """Calculates the inverse of the cumulative distribution function.
 
         Parameters
         ----------
@@ -143,12 +140,11 @@ class Marginal(object):
         ndarray
             Inverse of the cumulative distribution function evaluated at
             `samples`.
-        '''
+        """
         return self.rv_mixed.ppf(samples)
 
     def rvs(self, size=1, random_state=None):
-        '''
-        Generates random variates from the distribution.
+        """Generates random variates from the distribution.
 
         Parameters
         ----------
@@ -164,13 +160,12 @@ class Marginal(object):
         -------
         array_like
             Array of samples.
-        '''
+        """
         return self.rv_mixed.rvs(size, random_state=random_state)
 
     @staticmethod
     def fit(samples, is_continuous):
-        '''
-        Fits a distribution to the given samples.
+        """Fits a distribution to the given samples.
 
         Parameters
         ----------
@@ -184,7 +179,7 @@ class Marginal(object):
         -------
         best_marginal : Marginal
             The distribution fitted to `samples`.
-        '''
+        """
         # Mean and variance
         mean = np.mean(samples)
         var = np.var(samples)

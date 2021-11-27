@@ -15,6 +15,24 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+mixedvines
+==========
+
+Provides canonical vine copula trees with mixed continuous and discrete
+marginals.  The main class is `MixedVine` implementing a copula vine model with
+mixed marginals.
+
+Modules
+-------
+mixedvine
+    Copula vine model with mixed marginals.
+copula
+    Bivariate copula distributions.
+marginal
+    Univariate marginal distributions.
+
+"""
 from . import marginal
 from . import copula
 from . import mixedvine

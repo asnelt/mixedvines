@@ -15,9 +15,14 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements a copula vine model with mixed marginals.
-'''
+"""This module implements a copula vine model with mixed marginals.
+
+Classes
+-------
+MixedVine
+    Copula vine model with mixed marginals.
+
+"""
 from scipy.stats import kendalltau, norm, uniform
 from scipy.optimize import minimize
 import numpy as np
@@ -25,9 +30,8 @@ from .marginal import Marginal
 from .copula import Copula, IndependenceCopula
 
 
-class MixedVine(object):
-    '''
-    This class represents a copula vine model with mixed marginals.
+class MixedVine:
+    """Represents a copula vine model with mixed marginals.
 
     Parameters
     ----------
@@ -57,13 +61,13 @@ class MixedVine(object):
         Determines which marginals are continuous.
     fit(samples, is_continuous, trunc_level, do_refine, keep_order)
         Fits the mixed vine to the given samples.
-    '''
+    """
 
-    class VineLayer(object):
-        '''
-        This class represents a layer of a copula vine tree.  A tree
-        description in layers is advantageous, because most operations on the
-        vine work in sweeps from layer to layer.
+    class VineLayer:
+        """Represents a layer of a copula vine tree.
+
+        A tree description in layers is advantageous, because most operations
+        on the vine work in sweeps from layer to layer.
 
         Parameters
         ----------
@@ -125,7 +129,7 @@ class MixedVine(object):
             Collects the bounds of all copula parameters.
         is_continuous()
             Determines which marginals are continuous.
-        '''
+        """
 
         def __init__(self, input_layer=None, input_indices=None,
                      marginals=None, copulas=None):
@@ -150,30 +154,27 @@ class MixedVine(object):
                 self.input_marginal_indices = None
 
         def is_marginal_layer(self):
-            '''
-            Determines whether the layer is the marginal layer.
+            """Determines whether the layer is the marginal layer.
 
             Returns
             -------
             boolean
                 `True` if the layer is the marginal layer.
-            '''
+            """
             return not self.input_layer
 
         def is_root_layer(self):
-            '''
-            Determines whether the layer is the output layer.
+            """Determines whether the layer is the output layer.
 
             Returns
             -------
             boolean
                 `True` if the layer is the root layer.
-            '''
+            """
             return not self.output_layer
 
         def logpdf(self, samples):
-            '''
-            Calculates the log of the probability density function.
+            """Calculates the log of the probability density function.
 
             Parameters
             ----------
@@ -185,7 +186,7 @@ class MixedVine(object):
             -------
             ndarray
                 Log of the probability density function evaluated at `samples`.
-            '''
+            """
             if samples.size == 0:
                 return np.empty((0, 1))
             if self.is_root_layer():
@@ -194,8 +195,7 @@ class MixedVine(object):
             return self.output_layer.logpdf(samples)
 
         def _marginal_densities(self, samples):
-            '''
-            Evaluate marginal densities and cumulative distribution functions.
+            """Evaluates marginal densities and CDFs.
 
             Parameters
             ----------
@@ -213,7 +213,7 @@ class MixedVine(object):
                 'cdfm': Lower cumulative distribution functions.
                 'is_continuous': List of booleans where element i is `True` if
                 output element i is continuous.
-            '''
+            """
             logp = np.zeros(samples.shape)
             cdfp = np.zeros(samples.shape)
             cdfm = np.zeros(samples.shape)
@@ -234,9 +234,9 @@ class MixedVine(object):
             return dout
 
         def densities(self, samples):
-            '''
-            Computes densities and cumulative distribution functions layer by
-            layer.
+            """Computes densities and cumulative distribution functions.
+
+            The computation is done layer by layer.
 
             Parameters
             ----------
@@ -255,7 +255,7 @@ class MixedVine(object):
                 'cdfm': Lower cumulative distribution functions.
                 'is_continuous': List of booleans where element i is `True` if
                 output element i is continuous.
-            '''
+            """
             if self.is_marginal_layer():
                 return self._marginal_densities(samples)
             # Propagate samples to input_layer
@@ -354,9 +354,10 @@ class MixedVine(object):
             return dout
 
         def build_curvs(self, urvs, curvs):
-            '''
-            Helper function for `make_dependent`.  Builds conditional uniform
-            random variates `curvs` for `make_dependent`.
+            """Helper function for `make_dependent`.
+
+            Builds conditional uniform random variates `curvs` for
+            `make_dependent`.
 
             Parameters
             ----------
@@ -373,7 +374,7 @@ class MixedVine(object):
                 Dependent uniform random variates.
             curvs : array_like
                 Conditional uniform random variates.
-            '''
+            """
             (urvs, curvs) = self.make_dependent(urvs, curvs)
             if self.is_marginal_layer():
                 first_marginal_index = self.output_layer.input_indices[0][0]
@@ -386,8 +387,9 @@ class MixedVine(object):
             return (urvs, curvs)
 
         def curv_ccdf(self, sample, curvs, copula_index):
-            '''
-            Helper function for `build_curvs` to generate a conditional sample.
+            """Helper function for `build_curvs`.
+
+            The function generates a conditional sample.
 
             Parameters
             ----------
@@ -403,7 +405,7 @@ class MixedVine(object):
             -------
             sample : float
                 Conditional sample for `curvs` at index `copula_index`.
-            '''
+            """
             if not self.is_marginal_layer():
                 sample = self.input_layer.curv_ccdf(
                     sample, curvs, self.input_indices[copula_index][1])
@@ -413,9 +415,10 @@ class MixedVine(object):
             return sample
 
         def make_dependent(self, urvs, curvs=None):
-            '''
-            Helper function for `rvs`.  Introduces dependencies between the
-            uniform random variates `urvs` according to the vine copula tree.
+            """Helper function for `rvs`.
+
+            Introduces dependencies between the uniform random variates `urvs`
+            according to the vine copula tree.
 
             Parameters
             ----------
@@ -431,7 +434,7 @@ class MixedVine(object):
                 Dependent uniform random variates.
             curvs : array_like
                 Conditional uniform random variates.
-            '''
+            """
             if curvs is None:
                 curvs = np.zeros(shape=urvs.shape)
             if not self.is_marginal_layer():
@@ -448,9 +451,9 @@ class MixedVine(object):
             return (urvs, curvs)
 
         def rvs(self, size=1, random_state=None):
-            '''
-            Generates random variates from the mixed vine.  Currently assumes a
-            c-vine structure.
+            """Generates random variates from the mixed vine.
+
+            Currently assumes a c-vine structure.
 
             Parameters
             ----------
@@ -467,7 +470,7 @@ class MixedVine(object):
             array_like
                 n-by-d matrix of samples where n is the number of samples and d
                 is the number of marginals.
-            '''
+            """
             if self.is_root_layer():
                 # Determine distribution dimension
                 layer = self
@@ -484,10 +487,10 @@ class MixedVine(object):
             return self.output_layer.rvs(size=size, random_state=random_state)
 
         def fit(self, samples, is_continuous, trunc_level=None):
-            '''
-            Fits the vine tree to the given samples.  This method is supposed
-            to be called on the output layer and will recurse to its input
-            layers.
+            """Fits the vine tree to the given samples.
+
+            This method is supposed to be called on the output layer and will
+            recurse to its input layers.
 
             Parameters
             ----------
@@ -507,7 +510,7 @@ class MixedVine(object):
             output_urvs : array_like
                 The output uniform random variates of the layer.  Can be
                 ignored if this is the output layer.
-            '''
+            """
             if self.is_marginal_layer():
                 output_urvs = np.zeros(samples.shape)
                 for i in range(samples.shape[1]):
@@ -531,8 +534,7 @@ class MixedVine(object):
             return output_urvs
 
         def get_all_params(self):
-            '''
-            Constructs an array containing all copula parameters.
+            """Constructs an array containing all copula parameters.
 
             Returns
             -------
@@ -540,7 +542,7 @@ class MixedVine(object):
                 A list containing all copula parameter values starting with the
                 parameters of the first copula layer and continuing layer by
                 layer.
-            '''
+            """
             if self.is_marginal_layer():
                 params = []
             else:
@@ -552,8 +554,7 @@ class MixedVine(object):
             return params
 
         def set_all_params(self, params):
-            '''
-            Sets all copula parameters to the values stored in params.
+            """Sets all copula parameters to the values stored in params.
 
             Parameters
             ----------
@@ -561,17 +562,16 @@ class MixedVine(object):
                 A list containing all copula parameter values starting with the
                 parameters of the first copula layer and continuing layer by
                 layer.
-            '''
+            """
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
-                for i in range(len(self.copulas)):
-                    if self.copulas[i].theta is not None:
-                        for j in range(len(self.copulas[i].theta)):
+                for i, copula in enumerate(self.copulas):
+                    if copula.theta is not None:
+                        for j, _ in enumerate(copula.theta):
                             self.copulas[i].theta[j] = params.pop(0)
 
         def get_all_bounds(self):
-            '''
-            Collects the bounds of all copula parameters.
+            """Collects the bounds of all copula parameters.
 
             Returns
             -------
@@ -581,7 +581,7 @@ class MixedVine(object):
                 continuing layer by layer.  The first element of tuple i
                 denotes the lower bound and the second element denotes the
                 upper bound of parameter i.
-            '''
+            """
             if self.is_marginal_layer():
                 bnds = []
             else:
@@ -592,22 +592,20 @@ class MixedVine(object):
             return bnds
 
         def is_continuous(self):
-            '''
-            Determines which marginals are continuous.
+            """Determines which marginals are continuous.
 
             Returns
             -------
             vals : array_like
                 List of boolean values of length d, where d is the number of
                 marginals and element i is `True` if marginal i is continuous.
-            '''
+            """
             if self.is_marginal_layer():
                 vals = np.zeros(len(self.marginals), dtype=bool)
                 for k, marginal in enumerate(self.marginals):
                     vals[k] = marginal.is_continuous
                 return vals
-            else:
-                return self.input_layer.is_continuous()
+            return self.input_layer.is_continuous()
 
     def __init__(self, dim):
         if dim < 2:
@@ -616,8 +614,7 @@ class MixedVine(object):
         self.root = self._construct_c_vine(np.arange(dim))
 
     def logpdf(self, samples):
-        '''
-        Calculates the log of the probability density function.
+        """Calculates the log of the probability density function.
 
         Parameters
         ----------
@@ -629,12 +626,11 @@ class MixedVine(object):
         -------
         ndarray
             Log of the probability density function evaluated at `samples`.
-        '''
+        """
         return self.root.logpdf(samples)
 
     def pdf(self, samples):
-        '''
-        Calculates the probability density function.
+        """Calculates the probability density function.
 
         Parameters
         ----------
@@ -646,12 +642,11 @@ class MixedVine(object):
         -------
         ndarray
             Probability density function evaluated at `samples`.
-        '''
+        """
         return np.exp(self.logpdf(samples))
 
     def rvs(self, size=1, random_state=None):
-        '''
-        Generates random variates from the mixed vine.
+        """Generates random variates from the mixed vine.
 
         Parameters
         ----------
@@ -668,13 +663,12 @@ class MixedVine(object):
         array_like
             n-by-d matrix of samples where n is the number of samples and d is
             the number of marginals.
-        '''
+        """
         return self.root.rvs(size=size, random_state=random_state)
 
     def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000,
                 random_state=None):
-        '''
-        Estimates the entropy of the mixed vine.
+        """Estimates the entropy of the mixed vine.
 
         Parameters
         ----------
@@ -697,7 +691,7 @@ class MixedVine(object):
             Estimate of the mixed vine entropy in bits.
         sem : float
             Standard error of the mixed vine entropy estimate in bits.
-        '''
+        """
         # Gaussian confidence interval for sem_tol and level alpha
         conf = norm.ppf(1 - alpha)
         sem = np.inf
@@ -718,7 +712,8 @@ class MixedVine(object):
         return ent, sem
 
     def set_marginal(self, marginal_index, rv_mixed):
-        '''
+        """Sets a marginal distribution.
+
         Sets a particular marginal distribution in the mixed vine tree for
         manual construction of a mixed vine model.
 
@@ -728,14 +723,15 @@ class MixedVine(object):
             The index of the marginal in the marginal layer.
         rv_mixed : scipy.stats.distributions.rv_frozen
             The marginal distribution to be inserted.
-        '''
+        """
         layer = self.root
         while not layer.is_marginal_layer():
             layer = layer.input_layer
         layer.marginals[marginal_index] = Marginal(rv_mixed)
 
     def set_copula(self, layer_index, copula_index, copula):
-        '''
+        """Sets a pair copula.
+
         Sets a particular pair copula in the mixed vine tree for manual
         construction of a mixed vine model.
 
@@ -747,7 +743,7 @@ class MixedVine(object):
             The index of the copula in its layer.
         copula : Copula
             The copula to be inserted.
-        '''
+        """
         layer = self.root
         while not layer.is_marginal_layer():
             layer = layer.input_layer
@@ -758,22 +754,20 @@ class MixedVine(object):
         layer.copulas[copula_index] = copula
 
     def is_continuous(self):
-        '''
-        Determines which marginals are continuous.
+        """Determines which marginals are continuous.
 
         Returns
         -------
         is_continuous : array_like
             List of boolean values of length d, where d is the number of
             marginals and element i is `True` if marginal i is continuous.
-        '''
+        """
         return self.root.is_continuous()
 
     @staticmethod
     def fit(samples, is_continuous, trunc_level=None, do_refine=False,
             keep_order=False):
-        '''
-        Fits the mixed vine to the given samples.
+        """Fits the mixed vine to the given samples.
 
         Parameters
         ----------
@@ -798,7 +792,7 @@ class MixedVine(object):
         -------
         vine : MixedVine
             The mixed vine with parameters fitted to `samples`.
-        '''
+        """
         dim = samples.shape[1]
         vine = MixedVine(dim)
         if not keep_order:
@@ -811,9 +805,7 @@ class MixedVine(object):
             bnds = vine.root.get_all_bounds()
 
             def cost(params):
-                '''
-                Calculates the cost of a given set of copula parameters.
-                '''
+                """Calculates the cost of a given set of copula parameters."""
                 vine.root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
@@ -825,7 +817,8 @@ class MixedVine(object):
 
     @staticmethod
     def _heuristic_element_order(samples):
-        '''
+        """Finds a heuristic element order.
+
         Finds an order of elements that heuristically facilitates vine
         modelling.  For this purpose, Kendall's tau is calculated between
         samples of pairs of elements and elements are scored according to the
@@ -841,7 +834,7 @@ class MixedVine(object):
         -------
         order : array_like
             Permutation of all element indices reflecting descending scores.
-        '''
+        """
         dim = samples.shape[1]
         # Score elements according to total absolute Kendall's tau
         score = np.zeros(dim)
@@ -856,7 +849,8 @@ class MixedVine(object):
 
     @staticmethod
     def _construct_c_vine(element_order):
-        '''
+        """Constructs a c-vine.
+
         Constructs a c-vine tree without setting marginals or copulas.  The
         c-vine tree is constructed according to the input element order.  The
         index of the element with the most important dependencies should come
@@ -871,7 +865,7 @@ class MixedVine(object):
         -------
         root : VineLayer
             The root layer of the canonical vine tree.
-        '''
+        """
         dim = len(element_order)
         marginals = np.empty(dim, dtype=Marginal)
         layer = MixedVine.VineLayer(marginals=marginals)

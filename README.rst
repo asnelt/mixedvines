@@ -3,27 +3,28 @@ mixedvines Package for Python
 =============================
 
 Package for canonical vine copula trees with mixed continuous and discrete
-marginals.  If you use this software for publication, please cite [ONKEN2016]_.
+marginals.  If you use this software for publication, please cite
+[ONKEN2016]_.
 
 
 Description
 -----------
 
 This package contains a complete framework based on canonical vine copulas for
-modelling multivariate data that are partly discrete and partly continuous.  The
-resulting multivariate distributions are flexible with rich dependence
+modelling multivariate data that are partly discrete and partly continuous.
+The resulting multivariate distributions are flexible with rich dependence
 structures and marginals.
 
 For continuous marginals, implementations of the normal and the gamma
 distributions are provided.  For discrete marginals, Poisson, binomial and
 negative binomial distributions are provided.  As bivariate copula building
-blocks, the Gaussian, Frank and Clayton families as well as rotation transformed
-families are provided.  Additional marginal and pair copula distributions can be
-added easily.
+blocks, the Gaussian, Frank and Clayton families as well as rotation
+transformed families are provided.  Additional marginal and pair copula
+distributions can be added easily.
 
-The package includes methods for sampling, likelihood calculation and inference,
-all of which have quadratic complexity.  These procedures are combined to
-estimate entropy by means of Monte Carlo integration.
+The package includes methods for sampling, likelihood calculation and
+inference, all of which have quadratic complexity.  These procedures are
+combined to estimate entropy by means of Monte Carlo integration.
 
 Please see [ONKEN2016]_ for a more detailed description of the framework.
 
@@ -55,11 +56,11 @@ To install the mixedvines package, run::
 Usage
 -----
 
-Suppose that data are given in a NumPy array ``samples`` with shape ``(n, d)``,
-where ``n`` is the number of samples and ``d`` is the number of elements per
-sample.  First, specify which of the elements are continuous.  If, for instance,
-the distribution has three elements and the first and last element are
-continuous whereas the second element is discrete:
+Suppose that data are given in a NumPy array ``samples`` with shape
+``(n, d)``, where ``n`` is the number of samples and ``d`` is the number of
+elements per sample.  First, specify which of the elements are continuous.
+If, for instance, the distribution has three elements and the first and last
+element are continuous whereas the second element is discrete:
 
 .. code-block:: python
 
@@ -72,8 +73,9 @@ To fit a mixed vine to the samples:
     from mixedvines.mixedvine import MixedVine
     vine = MixedVine.fit(samples, is_continuous)
 
-``vine`` is now a ``MixedVine`` object.  To draw samples from the distribution,
-calculate their density and estimate the distribution entropy in units of bits:
+``vine`` is now a ``MixedVine`` object.  To draw samples from the
+distribution, calculate their density and estimate the distribution entropy in
+units of bits:
 
 .. code-block:: python
 

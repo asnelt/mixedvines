@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019 Arno Onken
+# Copyright (C) 2017-2019, 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -15,9 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements tests for the copula module.
-'''
+"""This module implements tests for the copula module.i"""
 import numpy as np
 from numpy.testing import assert_allclose
 from mixedvines.copula import IndependenceCopula, GaussianCopula, \
@@ -25,9 +23,7 @@ from mixedvines.copula import IndependenceCopula, GaussianCopula, \
 
 
 def test_logpdf():
-    '''
-    Tests the log of the probability density function.
-    '''
+    """Tests the log of the probability density function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -63,9 +59,7 @@ def test_logpdf():
 
 
 def test_pdf():
-    '''
-    Tests the probability density function.
-    '''
+    """Tests the probability density function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -98,9 +92,7 @@ def test_pdf():
 
 
 def test_logcdf():
-    '''
-    Tests the log of the cumulative distribution function.
-    '''
+    """Tests the log of the cumulative distribution function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -137,9 +129,7 @@ def test_logcdf():
 
 
 def test_cdf():
-    '''
-    Tests the cumulative distribution function.
-    '''
+    """Tests the cumulative distribution function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -172,9 +162,7 @@ def test_cdf():
 
 
 def test_ccdf():
-    '''
-    Tests the conditional cumulative distribution function.
-    '''
+    """Tests the conditional cumulative distribution function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -226,9 +214,7 @@ def test_ccdf():
 
 
 def test_ppcf():
-    '''
-    Tests the conditional cumulative distribution function.
-    '''
+    """Tests the conditional cumulative distribution function."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula
@@ -278,9 +264,7 @@ def test_ppcf():
 
 
 def test_rotation_90_deg():
-    '''
-    Tests the 90° copula rotation.
-    '''
+    """Tests the 90° copula rotation."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Clayton copula family rotated 90°
@@ -309,9 +293,7 @@ def test_rotation_90_deg():
 
 
 def test_rotation_180_deg():
-    '''
-    Tests the 180° copula rotation.
-    '''
+    """Tests the 180° copula rotation."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Clayton copula family rotated 180°
@@ -340,9 +322,7 @@ def test_rotation_180_deg():
 
 
 def test_rotation_270_deg():
-    '''
-    Tests the 270° copula rotation.
-    '''
+    """Tests the 270° copula rotation."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Clayton copula family rotated 270°

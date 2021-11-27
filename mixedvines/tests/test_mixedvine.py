@@ -15,9 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements tests for the mixedvine module.
-'''
+"""This module implements tests for the mixedvine module."""
 import pytest
 import numpy as np
 from numpy.testing import assert_approx_equal, assert_allclose
@@ -26,16 +24,15 @@ from mixedvines.copula import GaussianCopula, ClaytonCopula, FrankCopula
 from mixedvines.mixedvine import MixedVine
 
 
-@pytest.fixture
-def example_vine():
-    '''
-    Constructs an example mixed vine.
+@pytest.fixture(name="example_vine")
+def fixture_example_vine():
+    """Constructs an example mixed vine.
 
     Returns
     -------
     vine : MixedVine
         An example mixed vine.
-    '''
+    """
     dim = 3  # Dimension
     vine = MixedVine(dim)
     # Specify marginals
@@ -50,9 +47,7 @@ def example_vine():
 
 
 def test_pdf(example_vine):
-    '''
-    Tests the probability density function.
-    '''
+    """Tests the probability density function."""
     # Calculate probability density function on lattice
     bnds = np.empty((3), dtype=object)
     bnds[0] = [-1, 1]
@@ -74,9 +69,7 @@ def test_pdf(example_vine):
 
 
 def test_fit(example_vine):
-    '''
-    Tests the fit to samples.
-    '''
+    """Tests the fit to samples."""
     # Generate random variates
     size = 100
     random_state = np.random.RandomState(0)
@@ -93,9 +86,7 @@ def test_fit(example_vine):
 
 
 def test_entropy(example_vine):
-    '''
-    Tests the entropy estimate.
-    '''
+    """Tests the entropy estimate."""
     random_state = np.random.RandomState(0)
     (ent, sem) = example_vine.entropy(sem_tol=1e-2, random_state=random_state)
     assert_approx_equal(ent, 7.83, significant=3)

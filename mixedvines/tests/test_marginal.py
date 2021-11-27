@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019 Arno Onken
+# Copyright (C) 2017-2019, 2021 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -15,18 +15,14 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements tests for the marginal module.
-'''
+"""This module implements tests for the marginal module."""
 import numpy as np
 from numpy.testing import assert_allclose
 from mixedvines.marginal import Marginal
 
 
 def test_marginal_fit():
-    '''
-    Tests the fit method.
-    '''
+    """Tests the fit method."""
     samples = np.linspace(-2, 2, 3)
     # Normal distribution
     marginal = Marginal.fit(samples, True)

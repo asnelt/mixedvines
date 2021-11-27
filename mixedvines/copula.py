@@ -15,10 +15,22 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-This module implements copula distributions.
-'''
-import sys
+"""This module implements bivariate copula distributions.
+
+Classes
+-------
+Copula
+    Abstract class representing a copula.
+IndependenceCopula
+    Independence copula.
+GaussianCopula
+    Copula from the Gaussian family.
+ClaytonCopula
+    Copula from the Clayton family.
+FrankCopula
+    Copula from the Frank family.
+
+"""
 import abc
 from scipy.optimize import minimize
 from scipy.stats import norm, uniform, multivariate_normal
@@ -26,8 +38,7 @@ import numpy as np
 
 
 class Copula(abc.ABC):
-    '''
-    This abstract class represents a copula.
+    """This abstract class represents a copula.
 
     Parameters
     ----------
@@ -67,7 +78,8 @@ class Copula(abc.ABC):
         Fit a copula to samples.
     theta_bounds()
         Bounds for `theta` parameters.
-    '''
+    """
+
     rotation_options = ['90°', '180°', '270°']
 
     def __init__(self, theta=None, rotation=None):
@@ -78,15 +90,14 @@ class Copula(abc.ABC):
 
     @classmethod
     def __check_theta(cls, theta):
-        '''
-        Checks the `theta` parameter.
+        """Checks the `theta` parameter.
 
         Parameters
         ----------
         theta : array_like
             Parameter array of the copula.  The number of elements depends on
             the copula family.
-        '''
+        """
         bnds = cls.theta_bounds()
         if len(bnds) > 0:
             theta = np.asarray(theta)
@@ -106,23 +117,22 @@ class Copula(abc.ABC):
 
     @classmethod
     def __check_rotation(cls, rotation):
-        '''
-        Checks the `rotation` parameter.
+        """Checks the `rotation` parameter.
 
         Parameters
         ----------
         rotation : string
             Rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.
-        '''
+        """
         if rotation is not None and rotation not in cls.rotation_options:
             raise ValueError("rotation '" + rotation + "' not supported")
 
     @staticmethod
     def __crop_input(samples):
-        '''
-        Crops the input to the unit hypercube.  The input is changed and a
-        reference to the input is returned.
+        """Crops the input to the unit hypercube.
+
+        The input is changed and a reference to the input is returned.
 
         Parameters
         ----------
@@ -133,15 +143,15 @@ class Copula(abc.ABC):
         -------
         samples : array_like
             n-by-2 matrix of cropped samples where n is the number of samples.
-        '''
+        """
         samples[samples < 0] = 0
         samples[samples > 1] = 1
         return samples
 
     def __rotate_input(self, samples):
-        '''
-        Preprocesses the input to account for the copula rotation.  The input
-        is changed and a reference to the input is returned.
+        """Preprocesses the input to account for the copula rotation.
+
+        The input is changed and a reference to the input is returned.
 
         Parameters
         ----------
@@ -152,7 +162,7 @@ class Copula(abc.ABC):
         -------
         samples : array_like
             n-by-2 matrix of rotated samples where n is the number of samples.
-        '''
+        """
         if self.rotation == '90°':
             samples[:, 1] = 1 - samples[:, 1]
         elif self.rotation == '180°':
@@ -163,9 +173,9 @@ class Copula(abc.ABC):
 
     @abc.abstractmethod
     def _logpdf(self, samples):
-        '''
-        Calculates the log of the probability density function.  The samples
-        can be assumed to lie within the unit hypercube.
+        """Calculates the log of the probability density function.
+
+        The samples can be assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -176,12 +186,10 @@ class Copula(abc.ABC):
         -------
         vals : ndarray
             Log of the probability density function evaluated at `samples`.
-        '''
-        pass
+        """
 
     def logpdf(self, samples):
-        '''
-        Calculates the log of the probability density function.
+        """Calculates the log of the probability density function.
 
         Parameters
         ----------
@@ -192,7 +200,7 @@ class Copula(abc.ABC):
         -------
         vals : ndarray
             Log of the probability density function evaluated at `samples`.
-        '''
+        """
         samples = np.copy(np.asarray(samples))
         samples = self.__rotate_input(samples)
         inner = np.all(np.bitwise_and(samples > 0.0, samples < 1.0), axis=1)
@@ -204,8 +212,7 @@ class Copula(abc.ABC):
         return vals
 
     def pdf(self, samples):
-        '''
-        Calculates the probability density function.
+        """Calculates the probability density function.
 
         Parameters
         ----------
@@ -216,14 +223,14 @@ class Copula(abc.ABC):
         -------
         vals : ndarray
             Probability density function evaluated at `samples`.
-        '''
+        """
         return np.exp(self.logpdf(samples))
 
     @abc.abstractmethod
     def _logcdf(self, samples):
-        '''
-        Calculates the log of the cumulative distribution function.  The
-        samples can be assumed to lie within the unit hypercube.
+        """Calculates the log of the cumulative distribution function.
+
+        The samples can be assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -234,12 +241,10 @@ class Copula(abc.ABC):
         -------
         vals : ndarray
             Log of the cumulative distribution function evaluated at `samples`.
-        '''
-        pass
+        """
 
     def logcdf(self, samples):
-        '''
-        Calculates the log of the cumulative distribution function.
+        """Calculates the log of the cumulative distribution function.
 
         Parameters
         ----------
@@ -250,7 +255,7 @@ class Copula(abc.ABC):
         -------
         vals : ndarray
             Log of the cumulative distribution function evaluated at `samples`.
-        '''
+        """
         samples = np.copy(np.asarray(samples))
         samples = self.__crop_input(samples)
         samples = self.__rotate_input(samples)
@@ -274,8 +279,7 @@ class Copula(abc.ABC):
         return vals
 
     def cdf(self, samples):
-        '''
-        Calculates the cumulative distribution function.
+        """Calculates the cumulative distribution function.
 
         Parameters
         ----------
@@ -286,13 +290,14 @@ class Copula(abc.ABC):
         -------
         ndarray
             Cumulative distribution function evaluated at `samples`.
-        '''
+        """
         return np.exp(self.logcdf(samples))
 
     def __axis_wrapper(self, fun, samples, axis):
-        '''
-        Calls function `fun` with `samples` as argument, but eventually changes
-        rotation and samples such that `axis == 0` corresponds to `axis == 1`.
+        """Calls function `fun` with `samples` as argument.
+
+        Eventually changes rotation and samples such that `axis == 0`
+        corresponds to `axis == 1`.
 
         Parameters
         ----------
@@ -308,7 +313,7 @@ class Copula(abc.ABC):
         vals : array_like
             Function values evaluated at `samples` but taking `axis` into
             account.
-        '''
+        """
         samples = np.copy(np.asarray(samples))
         samples = self.__crop_input(samples)
         rotation = self.rotation
@@ -324,7 +329,7 @@ class Copula(abc.ABC):
                 raise ValueError("axis must be in [0, 1]")
             samples = self.__rotate_input(samples)
             vals = fun(samples)
-            if self.rotation == '180°' or self.rotation == '270°':
+            if self.rotation in ('180°', '270°'):
                 vals = 1.0 - vals
         finally:
             # Recover original rotation
@@ -333,10 +338,10 @@ class Copula(abc.ABC):
 
     @abc.abstractmethod
     def _ccdf(self, samples):
-        '''
-        Calculates the conditional cumulative distribution function conditioned
-        on axis 1.  The samples can be assumed to lie within the unit
-        hypercube.
+        """Calculates the conditional cumulative distribution function.
+
+        The cumulative distribution function is conditioned on axis 1.  The
+        samples can be assumed to lie within the unit hypercube.
 
         Parameters
         ----------
@@ -348,12 +353,10 @@ class Copula(abc.ABC):
         vals : ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
-        '''
-        pass
+        """
 
     def ccdf(self, samples, axis=1):
-        '''
-        Calculates the conditional cumulative distribution function.
+        """Calculates the conditional cumulative distribution function.
 
         Parameters
         ----------
@@ -368,12 +371,13 @@ class Copula(abc.ABC):
         vals : ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
-        '''
+        """
         return self.__axis_wrapper(self._ccdf, samples, axis)
 
     @abc.abstractmethod
     def _ppcf(self, samples):
-        '''
+        """Calculates the inverse of the conditional CDF.
+
         Calculates the inverse of the copula conditional cumulative
         distribution function conditioned on axis 1.  The samples can be
         assumed to lie within the unit hypercube.
@@ -388,11 +392,11 @@ class Copula(abc.ABC):
         vals : ndarray
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
-        '''
-        pass
+        """
 
     def ppcf(self, samples, axis=1):
-        '''
+        """Calculates the inverse of the conditional CDF.
+
         Calculates the inverse of the copula conditional cumulative
         distribution function.
 
@@ -409,12 +413,11 @@ class Copula(abc.ABC):
         vals : ndarray
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
-        '''
+        """
         return self.__axis_wrapper(self._ppcf, samples, axis)
 
     def rvs(self, size=1, random_state=None):
-        '''
-        Generates random variates from the copula.
+        """Generates random variates from the copula.
 
         Parameters
         ----------
@@ -430,7 +433,7 @@ class Copula(abc.ABC):
         -------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        '''
+        """
         samples = np.stack((uniform.rvs(size=size, random_state=random_state),
                             uniform.rvs(size=size, random_state=random_state)),
                            axis=1)
@@ -438,21 +441,18 @@ class Copula(abc.ABC):
         return samples
 
     def estimate_theta(self, samples):
-        '''
-        Estimates the theta parameters from the given samples.
+        """Estimates the theta parameters from the given samples.
 
         Parameters
         ----------
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
-        '''
+        """
         if self.theta is not None:
             bnds = self.theta_bounds()
 
             def cost(theta):
-                '''
-                Calculates the cost of a given `theta` parameter.
-                '''
+                """Calculates the cost of a given `theta` parameter."""
                 self.theta = np.asarray(theta)
                 vals = self.logpdf(samples)
                 # For optimization, filter out inifinity values
@@ -463,8 +463,7 @@ class Copula(abc.ABC):
 
     @classmethod
     def fit(cls, samples):
-        '''
-        Fits the parameters of the copula to the given samples.
+        """Fits the parameters of the copula to the given samples.
 
         Parameters
         ----------
@@ -475,7 +474,7 @@ class Copula(abc.ABC):
         -------
         copula : Copula
             The copula fitted to `samples`.
-        '''
+        """
         # Find best fitting family
         copulas = []
         for family in cls.__subclasses__():
@@ -495,22 +494,18 @@ class Copula(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def theta_bounds():
-        '''
-        Bounds for `theta` parameters.
+        """Bounds for `theta` parameters.
 
         Returns
         -------
         bnds : array_like
             List of 2-tuples where the first tuple element represents the lower
             bound and the second element represents the upper bound.
-        '''
-        pass
+        """
 
 
 class IndependenceCopula(Copula):
-    '''
-    This class represents the independence copula.
-    '''
+    """This class represents the independence copula."""
 
     def _logpdf(self, samples):
         vals = np.zeros(samples.shape[0])
@@ -542,9 +537,7 @@ class IndependenceCopula(Copula):
 
 
 class GaussianCopula(Copula):
-    '''
-    This class represents a copula from the Gaussian family.
-    '''
+    """This class represents a copula from the Gaussian family."""
 
     def _logpdf(self, samples):
         if self.theta >= 1.0:
@@ -601,15 +594,13 @@ class GaussianCopula(Copula):
 
 
 class ClaytonCopula(Copula):
-    '''
-    This class represents a copula from the Clayton family.
-    '''
+    """This class represents a copula from the Clayton family."""
 
     def _logpdf(self, samples):
         if self.theta == 0:
             vals = np.zeros(samples.shape[0])
         else:
-            vals = np.log(1 + self.theta) + (-1 - self.theta) \
+            vals = np.log1p(self.theta) + (-1 - self.theta) \
                    * (np.log(samples[:, 0]) + np.log(samples[:, 1])) \
                    + (-1 / self.theta - 2) \
                    * np.log(samples[:, 0]**(-self.theta)
@@ -676,9 +667,7 @@ class ClaytonCopula(Copula):
 
 
 class FrankCopula(Copula):
-    '''
-    This class represents a copula from the Frank family.
-    '''
+    """This class represents a copula from the Frank family."""
 
     def _logpdf(self, samples):
         if self.theta == 0:
