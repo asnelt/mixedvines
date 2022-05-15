@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019, 2021 Arno Onken
+# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -263,19 +263,17 @@ class Copula(abc.ABC):
         # Transform according to rotation, but take `__rotate_input` into
         # account.
         if self.rotation == '90°':
-            old_settings = np.seterr(divide='ignore')
-            vals = np.log(np.maximum(0, samples[:, 0] - np.exp(vals)))
-            np.seterr(**old_settings)
+            with np.errstate(divide='ignore'):
+                vals = np.log(np.maximum(0, samples[:, 0] - np.exp(vals)))
         elif self.rotation == '180°':
-            old_settings = np.seterr(divide='ignore')
-            vals = np.log(np.maximum(0,
-                                     (1 - samples[:, 0]) + (1 - samples[:, 1])
-                                     - 1.0 + np.exp(vals)))
-            np.seterr(**old_settings)
+            with np.errstate(divide='ignore'):
+                vals = np.log(np.maximum(0,
+                                         (1.0 - samples[:, 0])
+                                         + (1.0 - samples[:, 1])
+                                         - 1.0 + np.exp(vals)))
         elif self.rotation == '270°':
-            old_settings = np.seterr(divide='ignore')
-            vals = np.log(np.maximum(0, samples[:, 1] - np.exp(vals)))
-            np.seterr(**old_settings)
+            with np.errstate(divide='ignore'):
+                vals = np.log(np.maximum(0, samples[:, 1] - np.exp(vals)))
         return vals
 
     def cdf(self, samples):
@@ -512,9 +510,8 @@ class IndependenceCopula(Copula):
         return vals
 
     def _logcdf(self, samples):
-        old_settings = np.seterr(divide='ignore')
-        vals = np.sum(np.log(samples), axis=1)
-        np.seterr(**old_settings)
+        with np.errstate(divide='ignore'):
+            vals = np.sum(np.log(samples), axis=1)
         return vals
 
     def _ccdf(self, samples):
@@ -611,11 +608,11 @@ class ClaytonCopula(Copula):
         if self.theta == 0:
             vals = np.sum(np.log(samples), axis=1)
         else:
-            old_settings = np.seterr(divide='ignore')
-            vals = (-1 / self.theta) \
-                * np.log(np.maximum(samples[:, 0]**(-self.theta)
-                                    + samples[:, 1]**(-self.theta) - 1, 0))
-            np.seterr(**old_settings)
+            with np.errstate(divide='ignore'):
+                vals = (-1 / self.theta) \
+                    * np.log(np.maximum(samples[:, 0]**(-self.theta)
+                                        + samples[:, 1]**(-self.theta) - 1,
+                                        0))
         return vals
 
     def _ccdf(self, samples):
@@ -685,12 +682,11 @@ class FrankCopula(Copula):
         if self.theta == 0:
             vals = np.sum(np.log(samples), axis=1)
         else:
-            old_settings = np.seterr(divide='ignore')
-            vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
-                                    * np.expm1(-self.theta * samples[:, 1])
-                                    / (np.expm1(-self.theta)))) \
-                - np.log(self.theta)
-            np.seterr(**old_settings)
+            with np.errstate(divide='ignore'):
+                vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
+                                        * np.expm1(-self.theta * samples[:, 1])
+                                        / (np.expm1(-self.theta)))) \
+                    - np.log(self.theta)
         return vals
 
     def _ccdf(self, samples):
