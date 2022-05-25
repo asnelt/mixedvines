@@ -163,12 +163,13 @@ class Copula(abc.ABC):
         samples : array_like
             n-by-2 matrix of rotated samples where n is the number of samples.
         """
-        if self.rotation == '90°':
-            samples[:, 1] = 1 - samples[:, 1]
-        elif self.rotation == '180°':
-            samples[:, :] = 1 - samples[:, :]
-        elif self.rotation == '270°':
-            samples[:, 0] = 1 - samples[:, 0]
+        match self.rotation:
+            case '90°':
+                samples[:, 1] = 1 - samples[:, 1]
+            case '180°':
+                samples[:, :] = 1 - samples[:, :]
+            case '270°':
+                samples[:, 0] = 1 - samples[:, 0]
         return samples
 
     @abc.abstractmethod
@@ -262,18 +263,19 @@ class Copula(abc.ABC):
         vals = self._logcdf(samples)
         # Transform according to rotation, but take `__rotate_input` into
         # account.
-        if self.rotation == '90°':
-            with np.errstate(divide='ignore'):
-                vals = np.log(np.maximum(0, samples[:, 0] - np.exp(vals)))
-        elif self.rotation == '180°':
-            with np.errstate(divide='ignore'):
-                vals = np.log(np.maximum(0,
-                                         (1.0 - samples[:, 0])
-                                         + (1.0 - samples[:, 1])
-                                         - 1.0 + np.exp(vals)))
-        elif self.rotation == '270°':
-            with np.errstate(divide='ignore'):
-                vals = np.log(np.maximum(0, samples[:, 1] - np.exp(vals)))
+        match self.rotation:
+            case '90°':
+                with np.errstate(divide='ignore'):
+                    vals = np.log(np.maximum(0, samples[:, 0] - np.exp(vals)))
+            case '180°':
+                with np.errstate(divide='ignore'):
+                    vals = np.log(np.maximum(0,
+                                             (1.0 - samples[:, 0])
+                                             + (1.0 - samples[:, 1])
+                                             - 1.0 + np.exp(vals)))
+            case '270°':
+                with np.errstate(divide='ignore'):
+                    vals = np.log(np.maximum(0, samples[:, 1] - np.exp(vals)))
         return vals
 
     def cdf(self, samples):
