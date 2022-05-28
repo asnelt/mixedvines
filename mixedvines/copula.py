@@ -476,9 +476,7 @@ class Copula(abc.ABC):
             The copula fitted to `samples`.
         """
         # Find best fitting family
-        copulas = []
-        for family in cls.__subclasses__():
-            copulas.append(family.fit(samples))
+        copulas = [family.fit(samples) for family in cls.__subclasses__()]
         # Calculate Akaike information criterion
         aic = np.zeros(len(copulas))
         for i, copula in enumerate(copulas):

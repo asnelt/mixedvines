@@ -145,11 +145,10 @@ class MixedVine:
                 if input_layer.is_marginal_layer():
                     self.input_marginal_indices = input_indices
                 else:
-                    self.input_marginal_indices = []
-                    for _, i_ind in enumerate(input_indices):
-                        self.input_marginal_indices.append(np.array([
-                            input_layer.input_marginal_indices[i_ind[0]][1],
-                            input_layer.input_marginal_indices[i_ind[1]][1]]))
+                    self.input_marginal_indices = [np.array(
+                        [input_layer.input_marginal_indices[i_ind[0]][1],
+                         input_layer.input_marginal_indices[i_ind[1]][1]])
+                        for _, i_ind in enumerate(input_indices)]
             else:
                 self.input_marginal_indices = None
 
@@ -227,7 +226,7 @@ class MixedVine:
                     cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
                     with np.errstate(divide='ignore'):
                         logp[:, k] = np.log(np.maximum(0, cdfp[:, k]
-                                                          - cdfm[:, k]))
+                                                       - cdfm[:, k]))
             logpdf = logp[:, self.output_layer.input_indices[0][0]]
             dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
                     'is_continuous': is_continuous}
@@ -868,14 +867,13 @@ class MixedVine:
         layer = MixedVine.VineLayer(marginals=marginals)
         identity_order = np.arange(dim - 1)
         for i in range(1, dim):
-            input_indices = []
             if i == 1:
                 order = element_order
             else:
                 order = identity_order
             # For each successor layer, generate c-vine input indices
-            for j in range(dim - i):
-                input_indices.append(np.array([order[0], order[j+1]]))
+            input_indices = [np.array([order[0], order[j+1]])
+                             for j in range(dim - i)]
             copulas = np.empty(len(input_indices), dtype=Copula)
             # Generate vine layer
             layer = MixedVine.VineLayer(input_layer=layer,
