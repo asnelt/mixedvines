@@ -80,7 +80,7 @@ class Copula(abc.ABC):
         Bounds for `theta` parameters.
     """
 
-    rotation_options = ['90°', '180°', '270°']
+    rotation_options = ['0°', '90°', '180°', '270°']
 
     def __init__(self, theta=None, rotation=None):
         self.__check_theta(theta)
@@ -644,9 +644,8 @@ class ClaytonCopula(Copula):
     def fit(cls, samples):
         initial_point = (1.0)
         # Optimize rotation as well
-        copulas = [cls(theta=initial_point)]
-        for rotation in cls.rotation_options:
-            copulas.append(cls(theta=initial_point, rotation=rotation))
+        copulas = [cls(theta=initial_point, rotation=rotation)
+                   for rotation in cls.rotation_options]
         # Fit parameters and calculate Akaike information criterion
         aic = np.zeros(len(copulas))
         for i, _ in enumerate(copulas):
