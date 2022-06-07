@@ -548,8 +548,7 @@ class MixedVine:
                         if np.ndim(copula.theta) == 0:
                             params.append(copula.theta)
                         else:
-                            for param in copula.theta:
-                                params.append(param)
+                            params = params + copula.theta
             return params
 
         def set_all_params(self, params):
@@ -569,8 +568,8 @@ class MixedVine:
                         if np.ndim(copula.theta) == 0:
                             copula.theta = params.pop(0)
                         else:
-                            for j, _ in enumerate(copula.theta):
-                                copula.theta[j] = params.pop(0)
+                            copula.theta = params[0:len(copula.theta)]
+                            del params[0:len(copula.theta)]
 
         def get_all_bounds(self):
             """Collects the bounds of all copula parameters.
