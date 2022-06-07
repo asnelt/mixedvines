@@ -42,17 +42,17 @@ class Copula(abc.ABC):
 
     Parameters
     ----------
-    theta : array_like, optional
-        Parameter array of the copula.  The number of elements depends on the
-        copula family.  (Default: `None`)
+    theta : array_like or float, optional
+        Parameter or parameter array of the copula.  The number of elements
+        depends on the copula family.  (Default: `None`)
     rotation : string, optional
         Clockwise rotation of the copula.  Can be one of the elements of
         `Copula.rotation_options` or `None`.  (Default: `None`)
 
     Attributes
     ----------
-    theta : array_like
-        Parameter array of the copula.
+    theta : array_like or float
+        Parameter or parameter array of the copula.
     rotation : string
         Clockwise rotation of the copula.
 
@@ -94,9 +94,9 @@ class Copula(abc.ABC):
 
         Parameters
         ----------
-        theta : array_like
-            Parameter array of the copula.  The number of elements depends on
-            the copula family.
+        theta : array_like or float
+            Parameter or parameter array of the copula.  The number of elements
+            depends on the copula family.
         """
         bnds = cls.theta_bounds()
         if len(bnds) > 0:
@@ -455,7 +455,7 @@ class Copula(abc.ABC):
                 """Calculates the cost of a given `theta` parameter."""
                 self.theta = np.asarray(theta)
                 vals = self.logpdf(samples)
-                # For optimization, filter out inifinity values
+                # For optimization, filter out infinity values
                 return -np.sum(vals[np.isfinite(vals)])
 
             result = minimize(cost, self.theta, method='TNC', bounds=bnds)

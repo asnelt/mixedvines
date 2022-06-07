@@ -148,7 +148,7 @@ class MixedVine:
                     self.input_marginal_indices = [np.array(
                         [input_layer.input_marginal_indices[i_ind[0]][1],
                          input_layer.input_marginal_indices[i_ind[1]][1]])
-                        for _, i_ind in enumerate(input_indices)]
+                        for i_ind in input_indices]
             else:
                 self.input_marginal_indices = None
 
@@ -545,8 +545,11 @@ class MixedVine:
                 params = self.input_layer.get_all_params()
                 for copula in self.copulas:
                     if copula.theta is not None:
-                        for param in copula.theta:
-                            params.append(param)
+                        if np.ndim(copula.theta) == 0:
+                            params.append(copula.theta)
+                        else:
+                            for param in copula.theta:
+                                params.append(param)
             return params
 
         def set_all_params(self, params):
@@ -561,10 +564,13 @@ class MixedVine:
             """
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
-                for i, copula in enumerate(self.copulas):
+                for copula in self.copulas:
                     if copula.theta is not None:
-                        for j, _ in enumerate(copula.theta):
-                            self.copulas[i].theta[j] = params.pop(0)
+                        if np.ndim(copula.theta) == 0:
+                            copula.theta = params.pop(0)
+                        else:
+                            for j, _ in enumerate(copula.theta):
+                                copula.theta[j] = params.pop(0)
 
         def get_all_bounds(self):
             """Collects the bounds of all copula parameters.
