@@ -648,10 +648,10 @@ class ClaytonCopula(Copula):
                    for rotation in cls.rotation_options]
         # Fit parameters and calculate Akaike information criterion
         aic = np.zeros(len(copulas))
-        for i, _ in enumerate(copulas):
-            copulas[i].estimate_theta(samples)
-            aic[i] = - 2 * np.sum(copulas[i].logpdf(samples)) \
-                + 2 * len(copulas[i].theta)
+        for i, copula in enumerate(copulas):
+            copula.estimate_theta(samples)
+            aic[i] = - 2 * np.sum(copula.logpdf(samples)) \
+                + 2 * len(copula.theta)
         # Select best copula
         copula = copulas[np.argmin(aic)]
         return copula

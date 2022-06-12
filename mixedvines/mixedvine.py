@@ -841,7 +841,7 @@ class MixedVine:
         score = np.zeros(dim)
         for i in range(1, dim):
             for j in range(i):
-                tau, _ = kendalltau(samples[:, i], samples[:, j])
+                tau = kendalltau(samples[:, i], samples[:, j]).correlation
                 score[i] += np.abs(tau)
                 score[j] += np.abs(tau)
         # Get order indices for descending score
