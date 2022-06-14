@@ -2,8 +2,8 @@ Introduction
 ============
 
 
-This packge contains a complete framework based on canonical vine copulas for
-modelling multivariate data that are partly discrete and partly continuous.
+This package contains a complete framework based on canonical vine copulas for
+modeling multivariate data that are partly discrete and partly continuous.
 The resulting multivariate distributions are flexible with rich dependence
 structures and marginals.
 

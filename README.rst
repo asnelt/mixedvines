@@ -11,7 +11,7 @@ Description
 -----------
 
 This package contains a complete framework based on canonical vine copulas for
-modelling multivariate data that are partly discrete and partly continuous.
+modeling multivariate data that are partly discrete and partly continuous.
 The resulting multivariate distributions are flexible with rich dependence
 structures and marginals.
 
@@ -40,7 +40,7 @@ The full documentation for the mixedvines package is available at
 Requirements
 ------------
 
-The package requires Python 3.10 or greater and additionaly requires
+The package requires Python 3.10 or greater and additionally requires
 `NumPy and SciPy
 <http://www.scipy.org/install.html>`_.
 

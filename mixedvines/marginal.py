@@ -171,7 +171,7 @@ class Marginal:
         ----------
         samples : array_like
             Array of samples.
-        is_continuous : bool
+        is_continuous : boolean
             If `True` then a continuous distribution is fitted.  Otherwise, a
             discrete distribution is fitted.
 

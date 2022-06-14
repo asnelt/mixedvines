@@ -124,7 +124,7 @@ class MixedVine:
         get_all_params()
             Constructs an array containing all copula parameters.
         set_all_params(params)
-            Sets all copula parameters to the values stored in params.
+            Sets all copula parameters to the values stored in `params`.
         get_all_bounds()
             Collects the bounds of all copula parameters.
         is_continuous()
@@ -342,7 +342,7 @@ class MixedVine:
                                               - din['logp'][isf, i])
                         logp[:, k] \
                             = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
-                # This propagation of continuity is specific for the c-vine
+                # This propagation of continuity is specific to the c-vine
                 is_continuous[k] = din['is_continuous'][j]
             logpdf = din['logpdf'] + logp[:, 0]
             dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
@@ -552,7 +552,7 @@ class MixedVine:
             return params
 
         def set_all_params(self, params):
-            """Sets all copula parameters to the values stored in params.
+            """Sets all copula parameters to the values stored in `params`.
 
             Parameters
             ----------
@@ -821,7 +821,7 @@ class MixedVine:
         """Finds a heuristic element order.
 
         Finds an order of elements that heuristically facilitates vine
-        modelling.  For this purpose, Kendall's tau is calculated between
+        modeling.  For this purpose, Kendall's tau is calculated between
         samples of pairs of elements and elements are scored according to the
         sum of absolute Kendall's taus of pairs the elements appear in.
 
