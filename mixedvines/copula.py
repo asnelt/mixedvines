@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
@@ -42,7 +41,7 @@ class Copula(abc.ABC):
 
     Parameters
     ----------
-    theta : array_like or float, optional
+    theta : {array_like, float}, optional
         Parameter or parameter array of the copula.  The number of elements
         depends on the copula family.  (Default: `None`)
     rotation : string, optional
@@ -51,7 +50,7 @@ class Copula(abc.ABC):
 
     Attributes
     ----------
-    theta : array_like or float
+    theta : {array_like, float}
         Parameter or parameter array of the copula.
     rotation : string
         Clockwise rotation of the copula.
@@ -94,7 +93,7 @@ class Copula(abc.ABC):
 
         Parameters
         ----------
-        theta : array_like or float
+        theta : {array_like, float}
             Parameter or parameter array of the copula.  The number of elements
             depends on the copula family.
         """
@@ -425,7 +424,7 @@ class Copula(abc.ABC):
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an int, a new
+            corresponds to the `RandomState` singleton.  For an `int`, a new
             `RandomState` is generated and seeded.  For a `RandomState` or
             `Generator`, the object is used.  (Default: `None`)
 

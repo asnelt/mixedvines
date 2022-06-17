@@ -20,7 +20,7 @@ To manually construct and visualize a simple mixed vine model:
     vine.set_marginal(0, norm(0, 1))
     vine.set_marginal(1, poisson(5))
     vine.set_marginal(2, gamma(2, 0, 4))
-    # Specify pair copulas
+    # Specify pair-copulas
     vine.set_copula(1, 0, GaussianCopula(0.5))
     vine.set_copula(1, 1, FrankCopula(4))
     vine.set_copula(2, 0, ClaytonCopula(5))

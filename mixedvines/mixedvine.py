@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
@@ -56,7 +55,7 @@ class MixedVine:
     set_marginal(marginal_index, rv_mixed)
         Sets a particular marginal distribution in the mixed vine tree.
     set_copula(layer_index, copula_index, copula)
-        Sets a particular pair copula in the mixed vine tree.
+        Sets a particular pair-copula in the mixed vine tree.
     is_continuous()
         Determines which marginals are continuous.
     fit(samples, is_continuous, trunc_level, do_refine, keep_order)
@@ -457,7 +456,7 @@ class MixedVine:
                 The number of samples to generate.  (Default: 1)
             random_state : {None, int, RandomState, Generator}, optional
                 The random state to use for random variate generation.  `None`
-                corresponds to the `RandomState` singleton.  For an int, a
+                corresponds to the `RandomState` singleton.  For an `int`, a
                 new `RandomState` is generated and seeded.  For a `RandomState`
                 or `Generator`, the object is used.  (Default: `None`)
 
@@ -655,7 +654,7 @@ class MixedVine:
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an int, a new
+            corresponds to the `RandomState` singleton.  For an `int`, a new
             `RandomState` is generated and seeded.  For a `RandomState` or
             `Generator`, the object is used.  (Default: `None`)
 
@@ -682,7 +681,7 @@ class MixedVine:
             Carlo estimation.  (Default: 1000)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an int, a new
+            corresponds to the `RandomState` singleton.  For an `int`, a new
             `RandomState` is genered and seeded.  For a `RandomState` or
             `Generator`, the object is used.  (Default: `None`)
 
@@ -731,9 +730,9 @@ class MixedVine:
         layer.marginals[marginal_index] = Marginal(rv_mixed)
 
     def set_copula(self, layer_index, copula_index, copula):
-        """Sets a pair copula.
+        """Sets a pair-copula.
 
-        Sets a particular pair copula in the mixed vine tree for manual
+        Sets a particular pair-copula in the mixed vine tree for manual
         construction of a mixed vine model.
 
         Parameters
@@ -783,7 +782,7 @@ class MixedVine:
             just independence copulas.  If the level is `None`, then the vine
             is not truncated.  (Default: `None`)
         do_refine : boolean, optional
-            If `True`, then all pair copula parameters are optimized jointly at
+            If `True`, then all pair-copula parameters are optimized jointly at
             the end.  (Default: `False`)
         keep_order : boolean, optional
             If `False`, then a heuristic is used to select the vine structure.

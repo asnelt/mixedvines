@@ -6,7 +6,7 @@ Suppose that data are given in a NumPy array ``samples`` with shape
 ``(n, d)``, where ``n`` is the number of samples and ``d`` is the number of
 elements per sample.  First, specify which of the elements are continuous.
 If, for instance, the distribution has three elements and the first and last
-element are continuous whereas the second element is discrete:
+elements are continuous whereas the second element is discrete:
 
 .. code-block:: python
 
@@ -21,7 +21,7 @@ To fit a mixed vine to the samples:
 
 ``vine`` is now a ``MixedVine`` object.  Note that for the canonical vine, the
 order of elements is important.  Elements should be sorted according to the
-importance of their dependencies to other elements where elements with
+importance of their dependencies to other elements, where elements with
 important dependencies to many other elements should come first.  A heuristic
 way to select the order of elements is to calculate Kendall's tau between all
 element pairs, to obtain a score for each element by summing the taus of the

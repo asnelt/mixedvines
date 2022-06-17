@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019, 2021 Arno Onken
+# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -39,7 +38,7 @@ def fixture_example_vine():
     vine.set_marginal(0, norm(0, 1))
     vine.set_marginal(1, poisson(5))
     vine.set_marginal(2, gamma(2, 0, 4))
-    # Specify pair copulas
+    # Specify pair-copulas
     vine.set_copula(1, 0, GaussianCopula(0.5))
     vine.set_copula(1, 1, FrankCopula(4))
     vine.set_copula(2, 0, ClaytonCopula(5))

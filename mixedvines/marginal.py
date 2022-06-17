@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019, 2021 Arno Onken
+# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -28,7 +27,7 @@ import numpy as np
 
 
 class Marginal:
-    """Represents a marginal distribution which can be continuous or discrete.
+    """Represents a marginal distribution, which can be continuous or discrete.
 
     Parameters
     ----------
@@ -152,7 +151,7 @@ class Marginal:
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an int, a new
+            corresponds to the `RandomState` singleton.  For an `int`, a new
             `RandomState` is generated and seeded.  For a `RandomState` or
             `Generator`, the object is used.  (Default: `None`)
 

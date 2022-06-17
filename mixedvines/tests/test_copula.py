@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (C) 2017-2019, 2021 Arno Onken
+# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -15,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-"""This module implements tests for the copula module.i"""
+"""This module implements tests for the copula module."""
 import numpy as np
 from numpy.testing import assert_allclose
 from mixedvines.copula import IndependenceCopula, GaussianCopula, \
@@ -214,7 +213,7 @@ def test_ccdf():
 
 
 def test_ppcf():
-    """Tests the conditional cumulative distribution function."""
+    """Tests the inverse of the conditional CDF."""
     samples = np.array([np.linspace(0, 1, 5), np.linspace(0.2, 0.8, 5)]).T
 
     # Independence copula

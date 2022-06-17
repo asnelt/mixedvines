@@ -19,7 +19,7 @@ For continuous marginals, implementations of the normal and the gamma
 distributions are provided.  For discrete marginals, Poisson, binomial and
 negative binomial distributions are provided.  As bivariate copula building
 blocks, the Gaussian, Frank and Clayton families as well as rotation
-transformed families are provided.  Additional marginal and pair copula
+transformed families are provided.  Additional marginal and pair-copula
 distributions can be added easily.
 
 The package includes methods for sampling, likelihood calculation and
@@ -60,7 +60,7 @@ Suppose that data are given in a NumPy array ``samples`` with shape
 ``(n, d)``, where ``n`` is the number of samples and ``d`` is the number of
 elements per sample.  First, specify which of the elements are continuous.
 If, for instance, the distribution has three elements and the first and last
-element are continuous whereas the second element is discrete:
+elements are continuous whereas the second element is discrete:
 
 .. code-block:: python
 
@@ -100,7 +100,7 @@ To manually construct and visualize a simple mixed vine model:
     vine.set_marginal(0, norm(0, 1))
     vine.set_marginal(1, poisson(5))
     vine.set_marginal(2, gamma(2, 0, 4))
-    # Specify pair copulas
+    # Specify pair-copulas
     vine.set_copula(1, 0, GaussianCopula(0.5))
     vine.set_copula(1, 1, FrankCopula(4))
     vine.set_copula(2, 0, ClaytonCopula(5))
