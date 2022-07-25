@@ -159,7 +159,7 @@ class MixedVine:
             boolean
                 `True` if the layer is the marginal layer.
             """
-            return not self.input_layer
+            return self.input_layer is None
 
         def is_root_layer(self):
             """Determines whether the layer is the output layer.
@@ -169,7 +169,7 @@ class MixedVine:
             boolean
                 `True` if the layer is the root layer.
             """
-            return not self.output_layer
+            return self.output_layer is None
 
         def logpdf(self, samples):
             """Calculates the log of the probability density function.
@@ -215,9 +215,8 @@ class MixedVine:
             logp = np.zeros(samples.shape)
             cdfp = np.zeros(samples.shape)
             cdfm = np.zeros(samples.shape)
-            is_continuous = np.zeros(len(self.marginals), dtype=bool)
+            is_continuous = self.is_continuous()
             for k, marginal in enumerate(self.marginals):
-                is_continuous[k] = marginal.is_continuous
                 cdfp[:, k] = marginal.cdf(samples[:, k])
                 if marginal.is_continuous:
                     logp[:, k] = marginal.logpdf(samples[:, k])
@@ -601,9 +600,7 @@ class MixedVine:
                 marginals and element i is `True` if marginal i is continuous.
             """
             if self.is_marginal_layer():
-                vals = np.zeros(len(self.marginals), dtype=bool)
-                for k, marginal in enumerate(self.marginals):
-                    vals[k] = marginal.is_continuous
+                vals = [marginal.is_continuous for marginal in self.marginals]
                 return vals
             return self.input_layer.is_continuous()
 
