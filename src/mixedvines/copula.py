@@ -53,29 +53,6 @@ class Copula(abc.ABC):
         Parameter or parameter array of the copula.
     rotation : string
         Clockwise rotation of the copula.
-
-    Methods
-    -------
-    logpdf(samples)
-        Log of the probability density function.
-    pdf(samples)
-        Probability density function.
-    logcdf(samples)
-        Log of the cumulative distribution function.
-    cdf(samples)
-        Cumulative distribution function.
-    ccdf(samples, axis)
-        Conditional cumulative distribution function.
-    ppcf(samples, axis)
-        Inverse of the conditional cumulative distribution function.
-    rvs(size=1, random_state)
-        Generate random variates.
-    estimate_theta(samples)
-        Estimates the `theta` parameters from the given samples.
-    fit(samples)
-        Fit a copula to samples.
-    theta_bounds()
-        Bounds for `theta` parameters.
     """
 
     rotation_options = ['0°', '90°', '180°', '270°']

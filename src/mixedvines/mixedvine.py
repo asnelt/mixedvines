@@ -40,25 +40,6 @@ class MixedVine:
     ----------
     root : VineLayer
         The root layer of the vine tree.
-
-    Methods
-    -------
-    logpdf(samples)
-        Calculates the log of the probability density function.
-    pdf(samples)
-        Calculates the probability density function.
-    rvs(size, random_state)
-        Generates random variates from the mixed vine.
-    entropy(alpha, sem_tol, mc_size, random_state)
-        Estimates the entropy of the mixed vine.
-    set_marginal(marginal_index, rv_mixed)
-        Sets a particular marginal distribution in the mixed vine tree.
-    set_copula(layer_index, copula_index, copula)
-        Sets a particular pair-copula in the mixed vine tree.
-    is_continuous()
-        Determines which marginals are continuous.
-    fit(samples, is_continuous, trunc_level, do_refine, keep_order)
-        Fits the mixed vine to the given samples.
     """
 
     class VineLayer:
@@ -97,36 +78,6 @@ class MixedVine:
             List with the marginal distributions of this layer as elements.
         copulas : array_like
             List with the pair-copulas of this layer as elements.
-
-        Methods
-        -------
-        is_marginal_layer()
-            Determines whether the layer is a marginal layer.
-        is_root_layer()
-            Determines whether the layer is a root layer.
-        logpdf(samples)
-            Log of the probability density function.
-        densities(samples)
-            Computes densities and cumulative distribution functions.
-        build_curvs(urvs, curvs)
-            Builds conditional uniform random variates `curvs` for
-            `make_dependent`.
-        curv_ccdf(sample, curvs, copula_index)
-            Generates a conditional sample for `build_curvs`.
-        make_dependent(urvs, curvs)
-            Introduces dependencies between the uniform random variates `urvs`.
-        rvs(size, random_state)
-            Generates random variates from the mixed vine.
-        fit(samples, is_continuous, trunc_level)
-            Fits a vine tree.
-        get_all_params()
-            Constructs an array containing all copula parameters.
-        set_all_params(params)
-            Sets all copula parameters to the values stored in `params`.
-        get_all_bounds()
-            Collects the bounds of all copula parameters.
-        is_continuous()
-            Determines which marginals are continuous.
         """
 
         def __init__(self, input_layer=None, input_indices=None,

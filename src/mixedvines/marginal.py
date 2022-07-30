@@ -40,23 +40,6 @@ class Marginal:
         The distribution object.
     is_continuous : boolean
         `True` if the distribution is continuous.
-
-    Methods
-    -------
-    logpdf(samples)
-        Log of the probability density function or probability mass function.
-    pdf(samples)
-        Probability density function or probability mass function.
-    logcdf(samples)
-        Log of the cumulative distribution function.
-    cdf(samples)
-        Cumulative distribution function.
-    ppf(samples)
-        Inverse of the cumulative distribution function.
-    rvs(size, random_state)
-        Generate random variates.
-    fit(samples, is_continuous)
-        Fit a distribution to samples.
     """
 
     def __init__(self, rv_mixed):
