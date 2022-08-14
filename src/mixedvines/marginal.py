@@ -26,7 +26,7 @@ import numpy as np
 
 
 class Marginal:
-    """Represents a marginal distribution, which can be continuous or discrete.
+    """Represents a continuous or discrete marginal distribution.
 
     Parameters
     ----------
@@ -89,7 +89,8 @@ class Marginal:
         Returns
         -------
         ndarray
-            Log of the cumulative distribution function evaluated at `samples`.
+            Log of the cumulative distribution function evaluated at
+            `samples`.
         """
         return self.rv_mixed.logcdf(samples)
 
@@ -133,9 +134,9 @@ class Marginal:
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an `int`, a new
-            `RandomState` is generated and seeded.  For a `RandomState` or
-            `Generator`, the object is used.  (Default: `None`)
+            corresponds to the `RandomState` singleton.  For an `int`, a
+            new `RandomState` is generated and seeded.  For a `RandomState`
+            or `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
@@ -153,8 +154,8 @@ class Marginal:
         samples : array_like
             Array of samples.
         is_continuous : boolean
-            If `True` then a continuous distribution is fitted.  Otherwise, a
-            discrete distribution is fitted.
+            If `True` then a continuous distribution is fitted.  Otherwise,
+            a discrete distribution is fitted.
 
         Returns
         -------

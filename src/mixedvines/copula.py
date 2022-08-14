@@ -70,8 +70,8 @@ class Copula(abc.ABC):
         Parameters
         ----------
         theta : {array_like, float}
-            Parameter or parameter array of the copula.  The number of elements
-            depends on the copula family.
+            Parameter or parameter array of the copula.  The number of
+            elements depends on the copula family.
         """
         bnds = cls.theta_bounds()
         if len(bnds) > 0:
@@ -117,7 +117,8 @@ class Copula(abc.ABC):
         Returns
         -------
         samples : array_like
-            n-by-2 matrix of cropped samples where n is the number of samples.
+            n-by-2 matrix of cropped samples where n is the number of
+            samples.
         """
         samples[samples < 0] = 0
         samples[samples > 1] = 1
@@ -136,7 +137,8 @@ class Copula(abc.ABC):
         Returns
         -------
         samples : array_like
-            n-by-2 matrix of rotated samples where n is the number of samples.
+            n-by-2 matrix of rotated samples where n is the number of
+            samples.
         """
         match self.rotation:
             case '90°':
@@ -216,7 +218,8 @@ class Copula(abc.ABC):
         Returns
         -------
         vals : ndarray
-            Log of the cumulative distribution function evaluated at `samples`.
+            Log of the cumulative distribution function evaluated at
+            `samples`.
         """
 
     def logcdf(self, samples):
@@ -230,7 +233,8 @@ class Copula(abc.ABC):
         Returns
         -------
         vals : ndarray
-            Log of the cumulative distribution function evaluated at `samples`.
+            Log of the cumulative distribution function evaluated at
+            `samples`.
         """
         samples = np.copy(np.asarray(samples))
         samples = self.__crop_input(samples)
@@ -400,9 +404,10 @@ class Copula(abc.ABC):
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an `int`, a new
-            `RandomState` is generated and seeded.  For a `RandomState` or
-            `Generator`, the object is used.  (Default: `None`)
+            corresponds to the `RandomState` singleton.  For an `int`, a
+            new `RandomState` is generated and seeded.  For a
+            `RandomState` or `Generator`, the object is used.
+            (Default: `None`)
 
         Returns
         -------
@@ -472,8 +477,8 @@ class Copula(abc.ABC):
         Returns
         -------
         bnds : array_like
-            List of 2-tuples where the first tuple element represents the lower
-            bound and the second element represents the upper bound.
+            List of 2-tuples where the first tuple element represents the
+            lower bound and the second element represents the upper bound.
         """
 
 

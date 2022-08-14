@@ -18,8 +18,8 @@ mixedvines
 ==========
 
 Provides canonical vine copula trees with mixed continuous and discrete
-marginals.  The main class is `MixedVine` implementing a copula vine model with
-mixed marginals.
+marginals.  The main class is `MixedVine` implementing a copula vine model
+with mixed marginals.
 
 Modules
 -------

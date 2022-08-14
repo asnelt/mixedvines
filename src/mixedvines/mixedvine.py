@@ -45,24 +45,24 @@ class MixedVine:
     class VineLayer:
         """Represents a layer of a copula vine tree.
 
-        A tree description in layers is advantageous, because most operations
-        on the vine work in sweeps from layer to layer.
+        A tree description in layers is advantageous, because most
+        operations on the vine work in sweeps from layer to layer.
 
         Parameters
         ----------
         input_layer : VineLayer, optional
             The layer providing input.  (Default: `None`)
         input_indices : array_like, optional
-            Array of length n where n is the number of copulas in this layer.
-            Each element in the array is a 2-tuple containing the left and
-            right input indices of the respective pair-copula.  `None` if this
-            is the marginal layer.
+            Array of length n where n is the number of copulas in this
+            layer.  Each element in the array is a 2-tuple containing the
+            left and right input indices of the respective pair-copula.
+            `None` if this is the marginal layer.
         marginals : array_like, optional
-            List with the marginal distributions as elements.  `None` if this
-            is not the marginal layer.
+            List with the marginal distributions as elements.  `None` if
+            this is not the marginal layer.
         copulas : array_like, optional
-            List with the pair-copulas of this layer as elements.  `None` if
-            this is the marginal layer.
+            List with the pair-copulas of this layer as elements.  `None`
+            if this is the marginal layer.
 
         Attributes
         ----------
@@ -127,13 +127,14 @@ class MixedVine:
             Parameters
             ----------
             samples : array_like
-                n-by-d matrix of samples where n is the number of samples and d
-                is the number of marginals.
+                n-by-d matrix of samples where n is the number of samples
+                and d is the number of marginals.
 
             Returns
             -------
             ndarray
-                Log of the probability density function evaluated at `samples`.
+                Log of the probability density function evaluated at
+                `samples`.
             """
             if samples.size == 0:
                 return np.empty((0, 1))
@@ -148,8 +149,8 @@ class MixedVine:
             Parameters
             ----------
             samples : array_like
-                n-by-d matrix of samples where n is the number of samples and d
-                is the number of marginals.
+                n-by-d matrix of samples where n is the number of samples
+                and d is the number of marginals.
 
             Returns
             -------
@@ -159,8 +160,8 @@ class MixedVine:
                 'logp': Log of the probability density function.
                 'cdfp': Upper cumulative distribution functions.
                 'cdfm': Lower cumulative distribution functions.
-                'is_continuous': List of booleans where element i is `True` if
-                output element i is continuous.
+                'is_continuous': List of booleans where element i is `True`
+                if output element i is continuous.
             """
             logp = np.zeros(samples.shape)
             cdfp = np.zeros(samples.shape)
@@ -188,8 +189,8 @@ class MixedVine:
             Parameters
             ----------
             samples : array_like
-                n-by-d matrix of samples where n is the number of samples and d
-                is the number of marginals.
+                n-by-d matrix of samples where n is the number of samples
+                and d is the number of marginals.
 
             Returns
             -------
@@ -200,8 +201,8 @@ class MixedVine:
                 'logp': Log of the probability density function.
                 'cdfp': Upper cumulative distribution functions.
                 'cdfm': Lower cumulative distribution functions.
-                'is_continuous': List of booleans where element i is `True` if
-                output element i is continuous.
+                'is_continuous': List of booleans where element i is `True`
+                if output element i is continuous.
             """
             if self.is_marginal_layer():
                 return self._marginal_densities(samples)
@@ -309,8 +310,8 @@ class MixedVine:
                 Uniform random variates to be made dependent by
                 `make_dependent`.
             curvs : array_like
-                Array to be filled with dependent conditional uniform random
-                variates by `make_dependent`.
+                Array to be filled with dependent conditional uniform
+                random variates by `make_dependent`.
 
             Returns
             -------
@@ -361,16 +362,16 @@ class MixedVine:
         def make_dependent(self, urvs, curvs=None):
             """Helper function for `rvs`.
 
-            Introduces dependencies between the uniform random variates `urvs`
-            according to the vine copula tree.
+            Introduces dependencies between the uniform random variates
+            `urvs` according to the vine copula tree.
 
             Parameters
             ----------
             urvs : array_like
                 Uniform random variates to be made dependent.
             curvs : array_like, optional
-                Array to be filled with dependent conditional uniform random
-                variates by `build_curvs`.  (Default: `None`)
+                Array to be filled with dependent conditional uniform
+                random variates by `build_curvs`.  (Default: `None`)
 
             Returns
             -------
@@ -404,16 +405,17 @@ class MixedVine:
             size : int, optional
                 The number of samples to generate.  (Default: 1)
             random_state : {None, int, RandomState, Generator}, optional
-                The random state to use for random variate generation.  `None`
-                corresponds to the `RandomState` singleton.  For an `int`, a
-                new `RandomState` is generated and seeded.  For a `RandomState`
-                or `Generator`, the object is used.  (Default: `None`)
+                The random state to use for random variate generation.
+                `None` corresponds to the `RandomState` singleton.  For an
+                `int`, a new `RandomState` is generated and seeded.  For a
+                `RandomState` or `Generator`, the object is used.
+                (Default: `None`)
 
             Returns
             -------
             array_like
-                n-by-d matrix of samples where n is the number of samples and d
-                is the number of marginals.
+                n-by-d matrix of samples where n is the number of samples
+                and d is the number of marginals.
             """
             if self.is_root_layer():
                 # Determine distribution dimension
@@ -433,21 +435,22 @@ class MixedVine:
         def fit(self, samples, is_continuous, trunc_level=None):
             """Fits the vine tree to the given samples.
 
-            This method is supposed to be called on the output layer and will
-            recurse to its input layers.
+            This method is supposed to be called on the output layer and
+            will recurse to its input layers.
 
             Parameters
             ----------
             samples : array_like
-                n-by-d matrix of samples where n is the number of samples and d
-                is the number of marginals.
+                n-by-d matrix of samples where n is the number of samples
+                and d is the number of marginals.
             is_continuous : array_like
-                List of boolean values of length d, where d is the number of
-                marginals and element i is `True` if marginal i is continuous.
+                List of boolean values of length d, where d is the number
+                of marginals and element i is `True` if marginal i is
+                continuous.
             trunc_level : int, optional
-                Layer level to truncate the vine at.  Copulas in layers beyond
-                are just independence copulas.  If the level is `None`, then
-                the vine is not truncated.  (Default: `None`)
+                Layer level to truncate the vine at.  Copulas in layers
+                beyond are just independence copulas.  If the level is
+                `None`, then the vine is not truncated.  (Default: `None`)
 
             Returns
             -------
@@ -483,9 +486,9 @@ class MixedVine:
             Returns
             -------
             params : list
-                A list containing all copula parameter values starting with the
-                parameters of the first copula layer and continuing layer by
-                layer.
+                A list containing all copula parameter values starting with
+                the parameters of the first copula layer and continuing
+                layer by layer.
             """
             if self.is_marginal_layer():
                 params = []
@@ -505,9 +508,9 @@ class MixedVine:
             Parameters
             ----------
             params : list
-                A list containing all copula parameter values starting with the
-                parameters of the first copula layer and continuing layer by
-                layer.
+                A list containing all copula parameter values starting with
+                the parameters of the first copula layer and continuing
+                layer by layer.
             """
             if not self.is_marginal_layer():
                 self.input_layer.set_all_params(params)
@@ -546,8 +549,9 @@ class MixedVine:
             Returns
             -------
             vals : array_like
-                List of boolean values of length d, where d is the number of
-                marginals and element i is `True` if marginal i is continuous.
+                List of boolean values of length d, where d is the number
+                of marginals and element i is `True` if marginal i is
+                continuous.
             """
             if self.is_marginal_layer():
                 vals = [marginal.is_continuous for marginal in self.marginals]
@@ -566,8 +570,8 @@ class MixedVine:
         Parameters
         ----------
         samples : array_like
-            n-by-d matrix of samples where n is the number of samples and d is
-            the number of marginals.
+            n-by-d matrix of samples where n is the number of samples and d
+            is the number of marginals.
 
         Returns
         -------
@@ -601,15 +605,15 @@ class MixedVine:
             The number of samples to generate.  (Default: 1)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an `int`, a new
-            `RandomState` is generated and seeded.  For a `RandomState` or
-            `Generator`, the object is used.  (Default: `None`)
+            corresponds to the `RandomState` singleton.  For an `int`, a
+            new `RandomState` is generated and seeded.  For a `RandomState`
+            or `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
         array_like
-            n-by-d matrix of samples where n is the number of samples and d is
-            the number of marginals.
+            n-by-d matrix of samples where n is the number of samples and d
+            is the number of marginals.
         """
         return self.root.rvs(size=size, random_state=random_state)
 
@@ -622,15 +626,16 @@ class MixedVine:
         alpha : float, optional
             Significance level of the entropy estimate.  (Default: 0.05)
         sem_tol : float, optional
-            Maximum standard error as a stopping criterion.  (Default: 1e-3)
+            Maximum standard error as a stopping criterion.
+            (Default: 1e-3)
         mc_size : int, optional
             Number of samples that are drawn in each iteration of the Monte
             Carlo estimation.  (Default: 1000)
         random_state : {None, int, RandomState, Generator}, optional
             The random state to use for random variate generation.  `None`
-            corresponds to the `RandomState` singleton.  For an `int`, a new
-            `RandomState` is genered and seeded.  For a `RandomState` or
-            `Generator`, the object is used.  (Default: `None`)
+            corresponds to the `RandomState` singleton.  For an `int`, a
+            new `RandomState` is genered and seeded.  For a `RandomState`
+            or `Generator`, the object is used.  (Default: `None`)
 
         Returns
         -------
@@ -719,21 +724,21 @@ class MixedVine:
         Parameters
         ----------
         samples : array_like
-            n-by-d matrix of samples where n is the number of samples and d is
-            the number of marginals.
+            n-by-d matrix of samples where n is the number of samples and d
+            is the number of marginals.
         is_continuous : array_like
             List of boolean values of length d, where d is the number of
             marginals and element i is `True` if marginal i is continuous.
         trunc_level : int, optional
-            Layer level to truncate the vine at.  Copulas in layers beyond are
-            just independence copulas.  If the level is `None`, then the vine
-            is not truncated.  (Default: `None`)
+            Layer level to truncate the vine at.  Copulas in layers beyond
+            are just independence copulas.  If the level is `None`, then
+            the vine is not truncated.  (Default: `None`)
         do_refine : boolean, optional
-            If `True`, then all pair-copula parameters are optimized jointly at
-            the end.  (Default: `False`)
+            If `True`, then all pair-copula parameters are optimized
+            jointly at the end.  (Default: `False`)
         keep_order : boolean, optional
-            If `False`, then a heuristic is used to select the vine structure.
-            (Default: `False`)
+            If `False`, then a heuristic is used to select the vine
+            structure.  (Default: `False`)
 
         Returns
         -------
@@ -752,7 +757,7 @@ class MixedVine:
             bnds = vine.root.get_all_bounds()
 
             def cost(params):
-                """Calculates the cost of a given set of copula parameters."""
+                """Calculates the cost of a set of copula parameters."""
                 vine.root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
@@ -768,19 +773,20 @@ class MixedVine:
 
         Finds an order of elements that heuristically facilitates vine
         modeling.  For this purpose, Kendall's tau is calculated between
-        samples of pairs of elements and elements are scored according to the
-        sum of absolute Kendall's taus of pairs the elements appear in.
+        samples of pairs of elements and elements are scored according to
+        the sum of absolute Kendall's taus of pairs the elements appear in.
 
         Parameters
         ----------
         samples : array_like
-            n-by-d matrix of samples where n is the number of samples and d is
-            the number of marginals.
+            n-by-d matrix of samples where n is the number of samples and d
+            is the number of marginals.
 
         Returns
         -------
         order : array_like
-            Permutation of all element indices reflecting descending scores.
+            Permutation of all element indices reflecting descending
+            scores.
         """
         dim = samples.shape[1]
         # Score elements according to total absolute Kendall's tau
@@ -799,9 +805,9 @@ class MixedVine:
         """Constructs a c-vine.
 
         Constructs a c-vine tree without setting marginals or copulas.  The
-        c-vine tree is constructed according to the input element order.  The
-        index of the element with the most important dependencies should come
-        first in the input argument.
+        c-vine tree is constructed according to the input element order.
+        The index of the element with the most important dependencies
+        should come first in the input argument.
 
         Parameters
         ----------
