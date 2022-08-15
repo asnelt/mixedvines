@@ -51,9 +51,9 @@ def test_pdf(example_vine):
     bnds[0] = [-1, 1]
     bnds[1] = [0, 2]
     bnds[2] = [0.5, 2]
-    (x0g, x1g, x2g) = np.mgrid[bnds[0][0]:bnds[0][1],
-                               bnds[1][0]:bnds[1][1],
-                               bnds[2][0]:bnds[2][1]]
+    x0g, x1g, x2g = np.mgrid[bnds[0][0]:bnds[0][1],
+                             bnds[1][0]:bnds[1][1],
+                             bnds[2][0]:bnds[2][1]]
     points = np.array([x0g.ravel(), x1g.ravel(), x2g.ravel()]).T
     r_logpdf = np.array([-6.313469, -17.406428, -4.375992, -6.226508,
                          -8.836115, -20.430739, -5.107053, -6.687987])
@@ -86,6 +86,6 @@ def test_fit(example_vine):
 def test_entropy(example_vine):
     """Tests the entropy estimate."""
     random_state = np.random.RandomState(0)
-    (ent, sem) = example_vine.entropy(sem_tol=1e-2, random_state=random_state)
+    ent, sem = example_vine.entropy(sem_tol=1e-2, random_state=random_state)
     assert_approx_equal(ent, 7.83, significant=3)
     assert_approx_equal(sem, 0.00999, significant=3)

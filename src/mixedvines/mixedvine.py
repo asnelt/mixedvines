@@ -320,7 +320,7 @@ class MixedVine:
             curvs : array_like
                 Conditional uniform random variates.
             """
-            (urvs, curvs) = self.make_dependent(urvs, curvs)
+            urvs, curvs = self.make_dependent(urvs, curvs)
             if self.is_marginal_layer():
                 first_marginal_index = self.output_layer.input_indices[0][0]
                 curvs[:, first_marginal_index] = urvs[:, first_marginal_index]
@@ -329,7 +329,7 @@ class MixedVine:
                 curv_index = self.input_marginal_indices[copula_index][1]
                 curvs[:, curv_index] = self.curv_ccdf(urvs[:, curv_index],
                                                       curvs, copula_index)
-            return (urvs, curvs)
+            return urvs, curvs
 
         def curv_ccdf(self, sample, curvs, copula_index):
             """Helper function for `build_curvs`.
@@ -383,7 +383,7 @@ class MixedVine:
             if curvs is None:
                 curvs = np.zeros(shape=urvs.shape)
             if not self.is_marginal_layer():
-                (urvs, curvs) = self.input_layer.build_curvs(urvs, curvs)
+                urvs, curvs = self.input_layer.build_curvs(urvs, curvs)
             copula_index = 0
             layer = self
             while not layer.is_marginal_layer():
@@ -393,7 +393,7 @@ class MixedVine:
                                                                    axis=0)
                 copula_index = layer.input_indices[copula_index][1]
                 layer = layer.input_layer
-            return (urvs, curvs)
+            return urvs, curvs
 
         def rvs(self, size=1, random_state=None):
             """Generates random variates from the mixed vine.
@@ -425,7 +425,7 @@ class MixedVine:
                 dim = len(layer.marginals)
                 samples = uniform.rvs(size=[size, dim],
                                       random_state=random_state)
-                (samples, _) = self.make_dependent(samples)
+                samples, _ = self.make_dependent(samples)
                 # Use marginals to transform dependent uniform samples
                 for i, marginal in enumerate(layer.marginals):
                     samples[:, i] = marginal.ppf(samples[:, i])
@@ -710,7 +710,7 @@ class MixedVine:
 
         Returns
         -------
-        is_continuous : array_like
+        array_like
             List of boolean values of length d, where d is the number of
             marginals and element i is `True` if marginal i is continuous.
         """

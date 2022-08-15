@@ -39,4 +39,4 @@ the distribution entropy in units of bits:
 
     samples = vine.rvs(size=100)
     logpdf = vine.logpdf(samples)
-    (entropy, standard_error_mean) = vine.entropy(sem_tol=1e-2)
+    entropy, standard_error_mean = vine.entropy(sem_tol=1e-2)

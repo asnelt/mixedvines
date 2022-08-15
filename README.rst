@@ -81,7 +81,7 @@ units of bits:
 
     samples = vine.rvs(size=100)
     logpdf = vine.logpdf(samples)
-    (entropy, standard_error_mean) = vine.entropy(sem_tol=1e-2)
+    entropy, standard_error_mean = vine.entropy(sem_tol=1e-2)
 
 To manually construct and visualize a simple mixed vine model:
 
@@ -109,8 +109,8 @@ To manually construct and visualize a simple mixed vine model:
     bnds[0] = [-3, 3]
     bnds[1] = [0, 15]
     bnds[2] = [0.5, 25]
-    (x0, x1, x2) = np.mgrid[bnds[0][0]:bnds[0][1]:0.05, bnds[1][0]:bnds[1][1],
-                            bnds[2][0]:bnds[2][1]:0.1]
+    x0, x1, x2 = np.mgrid[bnds[0][0]:bnds[0][1]:0.05, bnds[1][0]:bnds[1][1],
+                          bnds[2][0]:bnds[2][1]:0.1]
     points = np.array([x0.ravel(), x1.ravel(), x2.ravel()]).T
     pdf = vine.pdf(points)
     pdf = np.reshape(pdf, x1.shape)

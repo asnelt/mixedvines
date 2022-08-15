@@ -162,7 +162,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Log of the probability density function evaluated at `samples`.
         """
 
@@ -199,7 +199,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Probability density function evaluated at `samples`.
         """
         return np.exp(self.logpdf(samples))
@@ -217,7 +217,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Log of the cumulative distribution function evaluated at
             `samples`.
         """
@@ -329,7 +329,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
         """
@@ -347,7 +347,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Conditional cumulative distribution function evaluated at
             `samples`.
         """
@@ -368,7 +368,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
         """
@@ -389,7 +389,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        vals : ndarray
+        ndarray
             Inverse of the conditional cumulative distribution function
             evaluated at `samples`.
         """
@@ -476,7 +476,7 @@ class Copula(abc.ABC):
 
         Returns
         -------
-        bnds : array_like
+        array_like
             List of 2-tuples where the first tuple element represents the
             lower bound and the second element represents the upper bound.
         """
