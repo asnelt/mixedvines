@@ -72,6 +72,11 @@ class Copula(abc.ABC):
         theta : {array_like, float}
             Parameter or parameter array of the copula.  The number of
             elements depends on the copula family.
+
+        Raises
+        ------
+        ValueError
+            If `theta` has the wrong size or is out of bounds.
         """
         bnds = cls.theta_bounds()
         if len(bnds) > 0:
@@ -81,12 +86,12 @@ class Copula(abc.ABC):
                                  " match the number of family parameters")
             if theta.size == 1:
                 if theta < bnds[0][0] or theta > bnds[0][1]:
-                    raise ValueError("parameter theta out of bounds")
+                    raise ValueError("parameter 'theta' out of bounds")
             else:
                 for i, bnd in enumerate(bnds):
                     if theta[i] < bnd[0] or theta[i] > bnd[1]:
-                        raise ValueError("parameter theta[" + str(i)
-                                         + "] out of bounds")
+                        raise ValueError("parameter 'theta[" + str(i)
+                                         + "]' out of bounds")
         elif theta is not None:
             raise ValueError("for this copula family, 'theta' must be 'None'")
 
@@ -99,6 +104,11 @@ class Copula(abc.ABC):
         rotation : string
             Rotation of the copula.  Can be one of the elements of
             `Copula.rotation_options` or `None`.
+
+        Raises
+        ------
+        ValueError
+            If the `rotation` parameter is unsuitable.
         """
         if rotation is not None and rotation not in cls.rotation_options:
             raise ValueError("rotation '" + rotation + "' not supported")
@@ -292,6 +302,11 @@ class Copula(abc.ABC):
         vals : array_like
             Function values evaluated at `samples` but taking `axis` into
             account.
+
+        Raises
+        ------
+        ValueError
+            If `axis` is not 0 and not 1.
         """
         samples = np.copy(np.asarray(samples))
         samples = self.__crop_input(samples)
@@ -305,7 +320,7 @@ class Copula(abc.ABC):
                     self.rotation = '90°'
                 samples = samples[:, [1, 0]]
             elif axis != 1:
-                raise ValueError("axis must be in [0, 1]")
+                raise ValueError("'axis' must be in [0, 1]")
             samples = self.__rotate_input(samples)
             vals = fun(samples)
             if self.rotation in ('180°', '270°'):

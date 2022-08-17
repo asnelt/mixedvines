@@ -40,6 +40,11 @@ class MixedVine:
     ----------
     root : VineLayer
         The root layer of the vine tree.
+
+    Raises
+    ------
+    ValueError
+        If the number of marginals `dim` is not greater than 1.
     """
 
     class VineLayer:
@@ -695,6 +700,11 @@ class MixedVine:
             The index of the copula in its layer.
         copula : Copula
             The copula to be inserted.
+
+        Raises
+        ------
+        IndexError
+            If the argument `layer_index` is out of range.
         """
         layer = self.root
         while not layer.is_marginal_layer():
