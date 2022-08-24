@@ -194,10 +194,8 @@ class Marginal:
                 params[i] = dist.fit(samples)
             rv_mixed = dist(*params[i])
             marginals[i] = Marginal(rv_mixed)
-        # Calculate Akaike information criterion
-        aic = np.zeros(len(options))
-        for i, marginal in enumerate(marginals):
-            aic[i] = 2 * len(params[i]) \
-                     - 2 * np.sum(marginal.logpdf(samples))
+        # Choose best marginal based on Akaike information criterion
+        aic = [2 * len(params[i]) - 2 * np.sum(marginal.logpdf(samples))
+               for i, marginal in enumerate(marginals)]
         best_marginal = marginals[np.argmin(aic)]
         return best_marginal
