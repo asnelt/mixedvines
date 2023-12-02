@@ -574,7 +574,7 @@ class GaussianCopula(Copula):
 
     @classmethod
     def fit(cls, samples):
-        initial_point = (0.0)
+        initial_point = 0.0
         copula = cls(theta=initial_point)
         copula.estimate_theta(samples)
         return copula
@@ -637,7 +637,7 @@ class ClaytonCopula(Copula):
 
     @classmethod
     def fit(cls, samples):
-        initial_point = (1.0)
+        initial_point = 1.0
         # Optimize rotation as well
         copulas = [cls(theta=initial_point, rotation=rotation)
                    for rotation in cls.rotation_options]
@@ -707,7 +707,7 @@ class FrankCopula(Copula):
 
     @classmethod
     def fit(cls, samples):
-        initial_point = (0.0)
+        initial_point = 0.0
         copula = cls(theta=initial_point)
         copula.estimate_theta(samples)
         return copula
