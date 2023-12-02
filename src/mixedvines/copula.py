@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
+# Copyright (C) 2017-2019, 2021-2023 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -90,8 +90,8 @@ class Copula(abc.ABC):
             else:
                 for i, bnd in enumerate(bnds):
                     if theta[i] < bnd[0] or theta[i] > bnd[1]:
-                        raise ValueError("parameter 'theta[" + str(i)
-                                         + "]' out of bounds")
+                        raise ValueError(f"parameter 'theta[{i}]' out of"
+                                         " bounds")
         elif theta is not None:
             raise ValueError("for this copula family, 'theta' must be 'None'")
 
