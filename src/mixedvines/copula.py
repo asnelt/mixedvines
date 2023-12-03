@@ -79,7 +79,7 @@ class Copula(abc.ABC):
             If `theta` has the wrong size or is out of bounds.
         """
         bnds = cls.theta_bounds()
-        if len(bnds) > 0:
+        if bnds:
             theta = np.asarray(theta)
             if theta.size != len(bnds):
                 raise ValueError("the number of elements of 'theta' does not"
