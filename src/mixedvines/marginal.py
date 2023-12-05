@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
+# Copyright (C) 2017-2019, 2021-2023 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -23,6 +23,7 @@ Marginal
 """
 from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
+from ._utils import _select_best_dist
 
 
 class Marginal:
@@ -194,8 +195,7 @@ class Marginal:
                 params[i] = dist.fit(samples)
             rv_mixed = dist(*params[i])
             marginals[i] = Marginal(rv_mixed)
-        # Choose best marginal based on Akaike information criterion
-        aic = [2 * len(params[i]) - 2 * np.sum(marginal.logpdf(samples))
-               for i, marginal in enumerate(marginals)]
-        best_marginal = marginals[np.argmin(aic)]
+        param_counts = [len(param) for param in params]
+        # Choose best marginal
+        best_marginal = _select_best_dist(samples, marginals, param_counts)
         return best_marginal

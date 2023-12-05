@@ -33,6 +33,7 @@ import abc
 from scipy.optimize import minimize
 from scipy.stats import norm, uniform, multivariate_normal
 import numpy as np
+from ._utils import _select_best_dist
 
 
 class Copula(abc.ABC):
@@ -472,17 +473,13 @@ class Copula(abc.ABC):
         """
         # Find best fitting family
         copulas = [family.fit(samples) for family in cls.__subclasses__()]
-        # Calculate Akaike information criterion
-        aic = np.zeros(len(copulas))
-        for i, copula in enumerate(copulas):
-            aic[i] = - 2 * np.sum(copula.logpdf(samples))
-            if copula.theta is not None:
-                if np.isscalar(copula.theta):
-                    aic[i] += 2
-                else:
-                    aic[i] += 2 * len(copula.theta)
-        copula = copulas[np.argmin(aic)]
-        return copula
+        param_counts = [0 if copula.theta is None
+                        else 1 if np.isscalar(copula.theta)
+                        else len(copula.theta)
+                        for copula in copulas]
+        # Select best copula
+        best_copula = _select_best_dist(samples, copulas, param_counts)
+        return best_copula
 
     @staticmethod
     @abc.abstractmethod
@@ -641,15 +638,13 @@ class ClaytonCopula(Copula):
         # Optimize rotation as well
         copulas = [cls(theta=initial_point, rotation=rotation)
                    for rotation in cls.rotation_options]
-        # Fit parameters and calculate Akaike information criterion
-        aic = np.zeros(len(copulas))
-        for i, copula in enumerate(copulas):
+        # Fit parameters
+        for copula in copulas:
             copula.estimate_theta(samples)
-            aic[i] = - 2 * np.sum(copula.logpdf(samples)) \
-                + 2 * len(copula.theta)
+        param_counts = [len(copula.theta) for copula in copulas]
         # Select best copula
-        copula = copulas[np.argmin(aic)]
-        return copula
+        best_copula = _select_best_dist(samples, copulas, param_counts)
+        return best_copula
 
     @staticmethod
     def theta_bounds():
