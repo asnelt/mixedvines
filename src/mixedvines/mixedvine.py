@@ -504,7 +504,7 @@ class MixedVine:
                         if np.ndim(copula.theta) == 0:
                             params.append(copula.theta)
                         else:
-                            params = params + copula.theta
+                            params = params + list(copula.theta)
             return params
 
         def set_all_params(self, params):
