@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021, 2022 Arno Onken
+# Copyright (C) 2017-2019, 2021-2023 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -518,14 +518,16 @@ class MixedVine:
                 layer by layer.
             """
             if not self.is_marginal_layer():
-                self.input_layer.set_all_params(params)
-                for copula in self.copulas:
+                for copula in reversed(self.copulas):
                     if copula.theta is not None:
                         if np.ndim(copula.theta) == 0:
-                            copula.theta = params.pop(0)
+                            param_count = 1
+                            copula.theta = params[-1]
                         else:
-                            copula.theta = params[0:len(copula.theta)]
-                            del params[0:len(copula.theta)]
+                            param_count = len(copula.theta)
+                            copula.theta[:] = params[-param_count:]
+                        params = params[:-param_count]
+                self.input_layer.set_all_params(params)
 
         def get_all_bounds(self):
             """Collects the bounds of all copula parameters.
