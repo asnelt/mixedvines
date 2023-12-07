@@ -41,7 +41,7 @@ class Copula(abc.ABC):
 
     Parameters
     ----------
-    theta : {array_like, float}, optional
+    theta : array_like or float, optional
         Parameter or parameter array of the copula.  The number of elements
         depends on the copula family.  (Default: `None`)
     rotation : string, optional
@@ -50,7 +50,7 @@ class Copula(abc.ABC):
 
     Attributes
     ----------
-    theta : {array_like, float}
+    theta : array_like or float
         Parameter or parameter array of the copula.
     rotation : string
         Clockwise rotation of the copula.
@@ -70,7 +70,7 @@ class Copula(abc.ABC):
 
         Parameters
         ----------
-        theta : {array_like, float}
+        theta : array_like or float
             Parameter or parameter array of the copula.  The number of
             elements depends on the copula family.
 
@@ -418,7 +418,7 @@ class Copula(abc.ABC):
         ----------
         size : int, optional
             The number of samples to generate.  (Default: 1)
-        random_state : {None, int, RandomState, Generator}, optional
+        random_state : None or int or RandomState or Generator, optional
             The random state to use for random variate generation.  `None`
             corresponds to the `RandomState` singleton.  For an `int`, a
             new `RandomState` is generated and seeded.  For a

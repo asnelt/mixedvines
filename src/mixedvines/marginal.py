@@ -133,7 +133,7 @@ class Marginal:
         ----------
         size : int, optional
             The number of samples to generate.  (Default: 1)
-        random_state : {None, int, RandomState, Generator}, optional
+        random_state : None or int or RandomState or Generator, optional
             The random state to use for random variate generation.  `None`
             corresponds to the `RandomState` singleton.  For an `int`, a
             new `RandomState` is generated and seeded.  For a `RandomState`
