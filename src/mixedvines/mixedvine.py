@@ -409,8 +409,9 @@ class MixedVine:
             ----------
             size : int, optional
                 The number of samples to generate.  (Default: 1)
-            random_state : None or int or RandomState or Generator,
-                           optional
+            random_state : {None, int, `numpy.random.Generator`,
+                            `numpy.random.RandomState`}, optional
+
                 The random state to use for random variate generation.
                 `None` corresponds to the `RandomState` singleton.  For an
                 `int`, a new `RandomState` is generated and seeded.  For a
@@ -611,7 +612,9 @@ class MixedVine:
         ----------
         size : int, optional
             The number of samples to generate.  (Default: 1)
-        random_state : None or int or RandomState or Generator, optional
+        random_state : {None, int, `numpy.random.Generator`,
+                        `numpy.random.RandomState`}, optional
+
             The random state to use for random variate generation.  `None`
             corresponds to the `RandomState` singleton.  For an `int`, a
             new `RandomState` is generated and seeded.  For a `RandomState`
@@ -639,7 +642,9 @@ class MixedVine:
         mc_size : int, optional
             Number of samples that are drawn in each iteration of the Monte
             Carlo estimation.  (Default: 1000)
-        random_state : None or int or RandomState or Generator, optional
+        random_state : {None, int, `numpy.random.Generator`,
+                        `numpy.random.RandomState`}, optional
+
             The random state to use for random variate generation.  `None`
             corresponds to the `RandomState` singleton.  For an `int`, a
             new `RandomState` is genered and seeded.  For a `RandomState`
