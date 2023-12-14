@@ -175,7 +175,7 @@ class Marginal:
             else:
                 options = [norm, gamma]
         else:
-            if var > mean:
+            if var > mean + 1e-3:
                 options = [poisson, binom, nbinom]
             else:
                 options = [poisson, binom]
