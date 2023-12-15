@@ -451,6 +451,7 @@ class Copula(abc.ABC):
 
             def cost(theta):
                 """Calculates the cost of a given `theta` parameter."""
+                self.theta = theta
                 vals = self.logpdf(samples)
                 # For optimization, filter out infinity values
                 return -np.sum(vals[np.isfinite(vals)])
