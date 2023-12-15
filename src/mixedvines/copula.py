@@ -33,7 +33,7 @@ import abc
 from scipy.optimize import minimize
 from scipy.stats import norm, uniform, multivariate_normal
 import numpy as np
-from ._utils import _select_best_dist
+from ._utils import select_best_dist
 
 
 class Copula(abc.ABC):
@@ -479,7 +479,7 @@ class Copula(abc.ABC):
                         else len(copula.theta)
                         for copula in copulas]
         # Select best copula
-        best_copula = _select_best_dist(samples, copulas, param_counts)
+        best_copula = select_best_dist(samples, copulas, param_counts)
         return best_copula
 
     @staticmethod
@@ -644,7 +644,7 @@ class ClaytonCopula(Copula):
             copula.estimate_theta(samples)
         param_counts = [len(copula.theta) for copula in copulas]
         # Select best copula
-        best_copula = _select_best_dist(samples, copulas, param_counts)
+        best_copula = select_best_dist(samples, copulas, param_counts)
         return best_copula
 
     @staticmethod

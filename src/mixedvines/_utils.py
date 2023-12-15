@@ -17,7 +17,7 @@
 import numpy as np
 
 
-def _select_best_dist(samples, dists, param_counts):
+def select_best_dist(samples, dists, param_counts):
     """Selects the best distribution for given samples.
 
     Uses the Akaike information criterion to assess each distribution in

@@ -23,7 +23,7 @@ Marginal
 """
 from scipy.stats import rv_continuous, norm, gamma, poisson, binom, nbinom
 import numpy as np
-from ._utils import _select_best_dist
+from ._utils import select_best_dist
 
 
 class Marginal:
@@ -199,5 +199,5 @@ class Marginal:
             marginals[i] = Marginal(rv_mixed)
         param_counts = [len(param) for param in params]
         # Choose best marginal
-        best_marginal = _select_best_dist(samples, marginals, param_counts)
+        best_marginal = select_best_dist(samples, marginals, param_counts)
         return best_marginal
