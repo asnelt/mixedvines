@@ -36,11 +36,6 @@ class MixedVine:
     dim : int
         The number of marginals of the vine model.  Must be greater than 1.
 
-    Attributes
-    ----------
-    root : _VineLayer
-        The root layer of the vine tree.
-
     Raises
     ------
     ValueError
@@ -51,7 +46,7 @@ class MixedVine:
         if dim < 2:
             raise ValueError("the number of marginals 'dim' must be greater"
                              " than 1")
-        self.root = self._construct_c_vine(np.arange(dim))
+        self._root = self._construct_c_vine(np.arange(dim))
 
     def logpdf(self, samples):
         """Calculates the log of the probability density function.
@@ -67,7 +62,7 @@ class MixedVine:
         ndarray
             Log of the probability density function evaluated at `samples`.
         """
-        return self.root.logpdf(samples)
+        return self._root.logpdf(samples)
 
     def pdf(self, samples):
         """Calculates the probability density function.
@@ -106,7 +101,7 @@ class MixedVine:
             n-by-d matrix of samples where n is the number of samples and d
             is the number of marginals.
         """
-        return self.root.rvs(size=size, random_state=random_state)
+        return self._root.rvs(size=size, random_state=random_state)
 
     def entropy(self, alpha=0.05, sem_tol=1e-3, mc_size=1000,
                 random_state=None):
@@ -166,10 +161,10 @@ class MixedVine:
         ----------
         marginal_index : int
             The index of the marginal in the marginal layer.
-        rv_mixed : scipy.stats.distributions.rv_frozen
+        rv_mixed : `scipy.stats.distributions.rv_frozen`
             The marginal distribution to be inserted.
         """
-        layer = self.root
+        layer = self._root
         while not layer.is_marginal_layer():
             layer = layer.input_layer
         layer.marginals[marginal_index] = Marginal(rv_mixed)
@@ -194,7 +189,7 @@ class MixedVine:
         IndexError
             If the argument `layer_index` is out of range.
         """
-        layer = self.root
+        layer = self._root
         while not layer.is_marginal_layer():
             layer = layer.input_layer
         if layer_index < 1 or layer_index >= len(layer.marginals):
@@ -212,7 +207,7 @@ class MixedVine:
             List of boolean values of length d, where d is the number of
             marginals and element i is `True` if marginal i is continuous.
         """
-        return self.root.is_continuous()
+        return self._root.is_continuous()
 
     @staticmethod
     def fit(samples, is_continuous, trunc_level=None, do_refine=False,
@@ -247,22 +242,22 @@ class MixedVine:
         vine = MixedVine(dim)
         if not keep_order:
             element_order = MixedVine._heuristic_element_order(samples)
-            vine.root = MixedVine._construct_c_vine(element_order)
-        vine.root.fit(samples, is_continuous, trunc_level)
+            vine._root = MixedVine._construct_c_vine(element_order)
+        vine._root.fit(samples, is_continuous, trunc_level)
         if do_refine:
             # Refine copula parameters
-            initial_point = vine.root.get_all_params()
-            bnds = vine.root.get_all_bounds()
+            initial_point = vine._root.get_all_params()
+            bnds = vine._root.get_all_bounds()
 
             def cost(params):
                 """Calculates the cost of a set of copula parameters."""
-                vine.root.set_all_params(params.tolist())
+                vine._root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
                 return -np.sum(vals)
 
             result = minimize(cost, initial_point, method='SLSQP',
                               bounds=bnds)
-            vine.root.set_all_params(result.x.tolist())
+            vine._root.set_all_params(result.x.tolist())
         return vine
 
     @staticmethod
