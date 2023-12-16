@@ -31,13 +31,13 @@ class Marginal:
 
     Parameters
     ----------
-    rv_mixed : scipy.stats.distributions.rv_frozen
+    rv_mixed : `scipy.stats.distributions.rv_frozen`
         The distribution object, either of a continuous or of a discrete
         univariate distribution.
 
     Attributes
     ----------
-    rv_mixed : scipy.stats.distributions.rv_frozen
+    rv_mixed : `scipy.stats.distributions.rv_frozen`
         The distribution object.
     is_continuous : boolean
         `True` if the distribution is continuous.

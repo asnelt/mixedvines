@@ -450,7 +450,7 @@ class _VineLayer:
 
         Returns
         -------
-        dout : dictionary
+        dictionary
             The densities and cumulative distribution functions.  Keys:
             `logpdf`: Equal to first element of `logp`.
             'logp': Log of the probability density function.
@@ -460,9 +460,8 @@ class _VineLayer:
                              output element i is continuous.
         """
         logp = np.zeros(samples.shape)
-        cdfp = np.zeros(samples.shape)
-        cdfm = np.zeros(samples.shape)
-        is_continuous = self.is_continuous()
+        cdfp = np.zeros_like(logp)
+        cdfm = np.zeros_like(logp)
         for k, marginal in enumerate(self.marginals):
             cdfp[:, k] = marginal.cdf(samples[:, k])
             if marginal.is_continuous:
@@ -471,10 +470,9 @@ class _VineLayer:
                 cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
                 with np.errstate(divide='ignore'):
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
-        logpdf = logp[:, self.output_layer.input_indices[0][0]]
-        dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
-                'is_continuous': is_continuous}
-        return dout
+        return {'logpdf': logp[:, self.output_layer.input_indices[0][0]],
+                'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
+                'is_continuous': self.is_continuous()}
 
     def densities(self, samples):
         """Computes densities and cumulative distribution functions.
@@ -489,7 +487,7 @@ class _VineLayer:
 
         Returns
         -------
-        dout : dictionary
+        dictionary
             The densities and cumulative distribution functions.  Keys:
             `logpdf`: Sum of the first elements of `logp` of all input
                       layers and this one.
@@ -503,86 +501,58 @@ class _VineLayer:
             return self._marginal_densities(samples)
         # Propagate samples to input_layer
         din = self.input_layer.densities(samples)
-        # Prepare output densities
+        # Prepare output density variables
         logp = np.zeros((samples.shape[0], len(self.copulas)))
-        cdfp = np.zeros((samples.shape[0], len(self.copulas)))
-        cdfm = np.zeros((samples.shape[0], len(self.copulas)))
-        is_continuous = np.zeros(len(self.copulas), dtype=bool)
+        cdfp = np.zeros_like(logp)
+        cdfm = np.zeros_like(logp)
         for k, copula in enumerate(self.copulas):
             i = self.input_indices[k][0]
             j = self.input_indices[k][1]
+            cdfpp = np.array([din['cdfp'][:, i], din['cdfp'][:, j]]).T
+            cdfpm = np.array([din['cdfp'][:, i], din['cdfm'][:, j]]).T
+            cdfmp = np.array([din['cdfm'][:, i], din['cdfp'][:, j]]).T
+            cdfmm = np.array([din['cdfm'][:, i], din['cdfm'][:, j]]).T
+            isf = np.isfinite(din['logp'][:, i])
             # Distinguish between discrete and continuous inputs
             if din['is_continuous'][i] and din['is_continuous'][j]:
-                cdfp[:, k] = copula.ccdf(np.array([din['cdfp'][:, i],
-                                                   din['cdfp'][:, j]]).T,
-                                         axis=0)
-                logp[:, k] = copula.logpdf(np.array([din['cdfp'][:, i],
-                                                     din['cdfp'][:, j]]).T) \
-                    + din['logp'][:, j]
+                cdfp[:, k] = copula.ccdf(cdfpp, axis=0)
+                logp[:, k] = copula.logpdf(cdfpp) + din['logp'][:, j]
             elif not din['is_continuous'][i] and din['is_continuous'][j]:
+                cdfp[~isf, k] = 0.0
+                logp[~isf, k] = -np.inf
                 with np.errstate(divide='ignore'):
-                    isf = np.isfinite(din['logp'][:, i])
-                    cdfp[~isf, k] = 0.0
                     cdfp[isf, k] = np.exp(np.log(
-                        np.maximum(0,
-                                   copula.cdf(
-                                       np.array([din['cdfp'][isf, i],
-                                                 din['cdfp'][isf, j]]).T)
-                                   - copula.cdf(
-                                       np.array([din['cdfm'][isf, i],
-                                                 din['cdfp'][isf, j]]).T)))
+                        np.maximum(0, copula.cdf(cdfpp[isf, :])
+                                   - copula.cdf(cdfmp[isf, :])))
                                           - din['logp'][isf, i])
-                    isf = np.isfinite(din['logp'][:, i])
-                    logp[~isf, k] = -np.inf
                     logp[isf, k] = np.log(
-                        np.maximum(0,
-                                   copula.ccdf(
-                                       np.array([din['cdfp'][isf, i],
-                                                 din['cdfp'][isf, j]]).T)
-                                   - copula.ccdf(
-                                       np.array([din['cdfm'][isf, i],
-                                                 din['cdfp'][isf, j]]).T))
+                        np.maximum(0, copula.ccdf(cdfpp[isf, :])
+                                   - copula.ccdf(cdfmp[isf, :]))
                         ) - din['logp'][isf, i] + din['logp'][isf, j]
             elif din['is_continuous'][i] and not din['is_continuous'][j]:
-                cdfp[:, k] = copula.ccdf(np.array([din['cdfp'][:, i],
-                                                   din['cdfp'][:, j]]).T,
-                                         axis=0)
-                cdfm[:, k] = copula.ccdf(np.array([din['cdfp'][:, i],
-                                                   din['cdfm'][:, j]]).T,
-                                         axis=0)
+                cdfp[:, k] = copula.ccdf(cdfpp, axis=0)
+                cdfm[:, k] = copula.ccdf(cdfpm, axis=0)
                 with np.errstate(divide='ignore'):
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
             else:
+                cdfp[~isf, k] = 0.0
+                cdfm[~isf, k] = 0.0
                 with np.errstate(divide='ignore'):
-                    isf = np.isfinite(din['logp'][:, i])
-                    cdfp[~isf, k] = 0.0
                     cdfp[isf, k] = np.exp(np.log(
-                        np.maximum(0,
-                                   copula.cdf(
-                                       np.array([din['cdfp'][isf, i],
-                                                 din['cdfp'][isf, j]]).T)
-                                   - copula.cdf(
-                                       np.array([din['cdfm'][isf, i],
-                                                 din['cdfp'][isf, j]]).T)))
+                        np.maximum(0, copula.cdf(cdfpp[isf, :])
+                                   - copula.cdf(cdfmp[isf, :])))
                                           - din['logp'][isf, i])
-                    isf = np.isfinite(din['logp'][:, i])
-                    cdfm[~isf, k] = 0.0
                     cdfm[isf, k] = np.exp(np.log(
-                        np.maximum(0,
-                                   copula.cdf(
-                                       np.array([din['cdfp'][isf, i],
-                                                 din['cdfm'][isf, j]]).T)
-                                   - copula.cdf(
-                                       np.array([din['cdfm'][isf, i],
-                                                 din['cdfm'][isf, j]]).T)))
+                        np.maximum(0, copula.cdf(cdfpm[isf, :])
+                                   - copula.cdf(cdfmm[isf, :])))
                                           - din['logp'][isf, i])
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
-            # This propagation of continuity is specific to the c-vine
-            is_continuous[k] = din['is_continuous'][j]
-        logpdf = din['logpdf'] + logp[:, 0]
-        dout = {'logpdf': logpdf, 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
-                'is_continuous': is_continuous}
-        return dout
+        return {'logpdf': din['logpdf'] + logp[:, 0],
+                'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
+                # This propagation of continuity is specific to the c-vine
+                'is_continuous':
+                    [din['is_continuous'][second_input]
+                     for second_input in list(zip(*self.input_indices))[1]]}
 
     def build_curvs(self, urvs, curvs):
         """Helper function for `_make_dependent`.
