@@ -458,6 +458,10 @@ class Copula(abc.ABC):
 
             result = minimize(cost, self.theta, method='TNC', bounds=bnds)
             self.theta = result.x
+            if len(result.x) == 1:
+                self.theta = result.x[0]
+            else:
+                self.theta = result.x
 
     @classmethod
     def fit(cls, samples):
@@ -643,7 +647,10 @@ class ClaytonCopula(Copula):
         # Fit parameters
         for copula in copulas:
             copula.estimate_theta(samples)
-        param_counts = [len(copula.theta) for copula in copulas]
+        param_counts = [0 if copula.theta is None
+                        else 1 if np.isscalar(copula.theta)
+                        else len(copula.theta)
+                        for copula in copulas]
         # Select best copula
         best_copula = select_best_dist(samples, copulas, param_counts)
         return best_copula
