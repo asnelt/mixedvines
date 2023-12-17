@@ -164,10 +164,8 @@ class MixedVine:
         rv_mixed : `scipy.stats.distributions.rv_frozen`
             The marginal distribution to be inserted.
         """
-        layer = self._root
-        while not layer.is_marginal_layer():
-            layer = layer.input_layer
-        layer.marginals[marginal_index] = Marginal(rv_mixed)
+        marginal_layer = self._get_marginal_layer()
+        marginal_layer.marginals[marginal_index] = Marginal(rv_mixed)
 
     def set_copula(self, layer_index, copula_index, copula):
         """Sets a pair-copula.
@@ -189,9 +187,7 @@ class MixedVine:
         IndexError
             If the argument `layer_index` is out of range.
         """
-        layer = self._root
-        while not layer.is_marginal_layer():
-            layer = layer.input_layer
+        layer = self._get_marginal_layer()
         if layer_index < 1 or layer_index >= len(layer.marginals):
             raise IndexError("argument 'layer_index' out of range")
         for _ in range(layer_index):
@@ -259,6 +255,13 @@ class MixedVine:
                               bounds=bnds)
             vine._root.set_all_params(result.x.tolist())
         return vine
+
+    def _get_marginal_layer(self):
+        """Returns the marginal layer of the MixedVine."""
+        layer = self._root
+        while not layer.is_marginal_layer():
+            layer = layer.input_layer
+        return layer
 
     @staticmethod
     def _heuristic_element_order(samples):
