@@ -55,3 +55,9 @@ keywords = [
 minversion = "6.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "numpydoc"
+]
