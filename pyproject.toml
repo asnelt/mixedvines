@@ -19,7 +19,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "mixedvines"
-version = "1.3.3"
+version = "1.3.4"
 authors = [{name = "Arno Onken", email = "asnelt@asnelt.org"}]
 description = "Canonical vine copula trees with mixed marginals"
 readme = "README.rst"
