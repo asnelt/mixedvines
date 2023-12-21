@@ -13,10 +13,10 @@ build:
 
 python:
   install:
-      - method: pip
+    - method: pip
       path: .
       extra_requirements:
-          - docs
+        - docs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
