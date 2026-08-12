@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021-2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -734,7 +734,8 @@ class _VineLayer:
                     self.copulas[i] = IndependenceCopula()
                 else:
                     self.copulas[i] = Copula.fit(input_urvs[:, i_ind])
-                output_urvs[:, i] = self.copulas[i].ccdf(input_urvs[:, i_ind])
+                output_urvs[:, i] = self.copulas[i].ccdf(input_urvs[:, i_ind],
+                                                         axis=0)
         return output_urvs
 
     def get_all_params(self):
