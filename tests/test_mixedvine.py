@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021-2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -76,7 +76,7 @@ def test_fit(example_vine):
     # Fit mixed vine to samples
     vine_est = MixedVine.fit(samples, is_continuous)
     # Test logpdf of fit
-    r_logpdf = np.array([-4.779093, -4.033449, -8.000042])
+    r_logpdf = np.array([-4.890550, -4.080387, -8.499144])
     p_logpdf = vine_est.logpdf(samples[:3, :])
     assert_allclose(p_logpdf, r_logpdf, rtol=1e-3)
 

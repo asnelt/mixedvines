@@ -143,6 +143,9 @@ class MixedVine:
         ent = 0.0
         var_sum = 0.0
         k = 0
+        # Ensure random_state progression
+        if isinstance(random_state, (int, np.integer)):
+            random_state = np.random.RandomState(random_state)
         while sem >= sem_tol:
             # Generate samples
             samples = self.rvs(size=mc_size, random_state=random_state)

@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021-2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -432,9 +432,7 @@ class Copula(abc.ABC):
         samples : array_like
             n-by-2 matrix of samples where n is the number of samples.
         """
-        samples = np.stack((uniform.rvs(size=size, random_state=random_state),
-                            uniform.rvs(size=size, random_state=random_state)),
-                           axis=1)
+        samples = uniform.rvs(size=(size, 2), random_state=random_state)
         samples[:, 0] = self.ppcf(samples)
         return samples
 
