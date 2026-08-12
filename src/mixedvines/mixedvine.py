@@ -127,7 +127,7 @@ class MixedVine:
 
             The random state to use for random variate generation.  `None`
             corresponds to the `RandomState` singleton.  For an `int`, a
-            new `RandomState` is genered and seeded.  For a `RandomState`
+            new `RandomState` is generated and seeded.  For a `RandomState`
             or `Generator`, the object is used.  (Default: `None`)
 
         Returns
