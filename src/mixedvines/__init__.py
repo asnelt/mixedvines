@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021-2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -31,10 +31,8 @@ marginal
     Univariate marginal distributions.
 
 """
+__all__ = ['marginal', 'copula', 'mixedvine', 'MixedVine']
 from . import marginal
 from . import copula
 from . import mixedvine
 from .mixedvine import MixedVine
-
-
-__all__ = ['marginal', 'copula', 'mixedvine', 'MixedVine']
