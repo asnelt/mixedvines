@@ -439,7 +439,7 @@ class _VineLayer:
             `samples`.
         """
         if samples.size == 0:
-            return np.empty((0, 1))
+            return np.empty(0)
         if self.is_root_layer():
             res = self.densities(samples)
             return res['logpdf']
