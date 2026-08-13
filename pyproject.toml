@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2023 Arno Onken
+# Copyright (C) 2021-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -55,6 +55,9 @@ keywords = [
 minversion = "6.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
+
+[tool.pylint.main]
+extension-pkg-allow-list = ["numpy"]
 
 [project.optional-dependencies]
 docs = [
