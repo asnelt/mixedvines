@@ -115,7 +115,8 @@ class MixedVine:
         Parameters
         ----------
         alpha : float, optional
-            Significance level of the entropy estimate.  (Default: 0.05)
+            Significance level of the entropy estimate.  Must be greater
+            than 0 and smaller than 0.5.  (Default: 0.05)
         sem_tol : float, optional
             Maximum standard error as a stopping criterion.
             (Default: 1e-3)
@@ -136,7 +137,16 @@ class MixedVine:
             Estimate of the mixed vine entropy in bits.
         sem : float
             Standard error of the mixed vine entropy estimate in bits.
+
+        Raises
+        ------
+        ValueError
+            If the significance level `alpha` is not in the interval
+            (0, 0.5).
         """
+        if alpha <= 0 or alpha >= 0.5:
+            raise ValueError("the significance level 'alpha' must be in the"
+                             " interval (0, 0.5)")
         # Gaussian confidence interval for sem_tol and level alpha
         conf = norm.ppf(1 - alpha)
         sem = np.inf
