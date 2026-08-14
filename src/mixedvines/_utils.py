@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -39,8 +39,13 @@ def select_best_dist(samples, dists, param_counts):
     best_dist : Marginal or Copula
         The best distribution from `dists`.
     """
-    # Calculate Akaike information criterion
-    aic = [2 * param_count - 2 * np.sum(dist.logpdf(samples))
-           for dist, param_count in zip(dists, param_counts)]
+    logpdfs = np.array([dist.logpdf(samples) for dist in dists])
+    # Indices that are informative for selection
+    informative = np.any(np.isfinite(logpdfs), axis=0)
+    with np.errstate(invalid='ignore'):
+        # Log-likelihood based on informative samples
+        logl = np.sum(logpdfs[:, informative], axis=1)
+    aic = np.where(np.isfinite(logl), 2 * np.asarray(param_counts) - 2 * logl,
+                   np.inf)
     best_dist = dists[np.argmin(aic)]
     return best_dist
