@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2019, 2021-2023 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -175,10 +175,12 @@ class Marginal:
             else:
                 options = [norm, gamma]
         else:
-            if var > mean + 1e-3:
-                options = [poisson, binom, nbinom]
-            else:
+            if np.max(samples) == 0:
+                options = [poisson]
+            elif var <= mean + 1e-3:
                 options = [poisson, binom]
+            else:
+                options = [poisson, binom, nbinom]
         params = np.empty(len(options), dtype=object)
         marginals = np.empty(len(options), dtype=object)
         # Fit parameters and construct marginals
