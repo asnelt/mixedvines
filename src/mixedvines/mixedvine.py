@@ -553,6 +553,8 @@ class _VineLayer:
                                    - copula.cdf(cdfmm[isf, :])))
                                           - din['logp'][isf, i])
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
+        cdfp = np.clip(cdfp, np.finfo(float).eps, 1 - np.finfo(float).eps)
+        cdfm = np.clip(cdfm, np.finfo(float).eps, 1 - np.finfo(float).eps)
         return {'logpdf': din['logpdf'] + logp[:, 0],
                 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
                 # This propagation of continuity is specific to the c-vine
