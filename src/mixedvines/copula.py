@@ -131,9 +131,7 @@ class Copula(abc.ABC):
             n-by-2 matrix of cropped samples where n is the number of
             samples.
         """
-        samples[samples < 0] = 0
-        samples[samples > 1] = 1
-        return samples
+        return np.clip(samples, 0, 1)
 
     def __rotate_input(self, samples):
         """Preprocesses the input to account for the copula rotation.
@@ -558,20 +556,29 @@ class GaussianCopula(Copula):
         return vals
 
     def _ccdf(self, samples):
-        vals = np.zeros(samples.shape[0])
-        # Avoid subtraction of infinities
-        neqz = np.bitwise_and(np.any(samples > 0.0, axis=1),
-                              np.any(samples < 1.0, axis=1))
-        nrvs = norm.ppf(samples[neqz, :])
-        vals[neqz] = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
-                              / np.sqrt(1 - self.theta**2))
-        vals[np.invert(neqz)] = norm.cdf(0.0)
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            with np.errstate(invalid='ignore'):
+                nrvs = norm.ppf(samples)
+                vals = norm.cdf((nrvs[:, 0] - self.theta * nrvs[:, 1])
+                                / np.sqrt(1 - self.theta**2))
+            # Correct border values
+            vals[samples[:, 0] == 0.0] = 0.0
+            vals[samples[:, 0] == 1.0] = 1.0
         return vals
 
     def _ppcf(self, samples):
-        nrvs = norm.ppf(samples)
-        vals = norm.cdf(nrvs[:, 0] * np.sqrt(1 - self.theta**2)
-                        + self.theta * nrvs[:, 1])
+        if self.theta == 0:
+            vals = samples[:, 0]
+        else:
+            with np.errstate(invalid='ignore'):
+                nrvs = norm.ppf(samples)
+                vals = norm.cdf(nrvs[:, 0] * np.sqrt(1 - self.theta**2)
+                                + self.theta * nrvs[:, 1])
+            # Correct border values
+            vals[samples[:, 0] == 0.0] = 0.0
+            vals[samples[:, 0] == 1.0] = 1.0
         return vals
 
     @classmethod
@@ -590,26 +597,42 @@ class GaussianCopula(Copula):
 class ClaytonCopula(Copula):
     """This class represents a copula from the Clayton family."""
 
+    def __loggen(self, samples):
+        """Calculates the log of the Clayton generator sum.
+
+        Parameters
+        ----------
+        samples : array_like
+            n-by-2 matrix of samples where n is the number of samples.
+
+        Returns
+        -------
+        ndarray
+            Log of the generator sum evaluated at `samples`.
+        """
+        uterm = -self.theta * np.log(samples[:, 0])
+        vterm = -self.theta * np.log(samples[:, 1])
+        maxterm = np.maximum(uterm, vterm)
+        return maxterm + np.log1p(np.exp(-np.abs(uterm - vterm))
+                                  - np.exp(-maxterm))
+
     def _logpdf(self, samples):
         if self.theta == 0:
             vals = np.zeros(samples.shape[0])
         else:
             vals = np.log1p(self.theta) + (-1 - self.theta) \
                    * (np.log(samples[:, 0]) + np.log(samples[:, 1])) \
-                   + (-1 / self.theta - 2) \
-                   * np.log(samples[:, 0]**(-self.theta)
-                            + samples[:, 1]**(-self.theta) - 1)
+                   + (-1 / self.theta - 2) * self.__loggen(samples)
         return vals
 
     def _logcdf(self, samples):
         if self.theta == 0:
             vals = np.sum(np.log(samples), axis=1)
         else:
-            with np.errstate(divide='ignore'):
-                vals = (-1 / self.theta) \
-                    * np.log(np.maximum(samples[:, 0]**(-self.theta)
-                                        + samples[:, 1]**(-self.theta) - 1,
-                                        0))
+            vals = np.full(samples.shape[0], -np.inf)
+            gtz = np.all(samples > 0.0, axis=1)
+            vals[gtz] = (-1 / self.theta) \
+                * self.__loggen(samples[gtz, :])
         return vals
 
     def _ccdf(self, samples):
@@ -618,10 +641,9 @@ class ClaytonCopula(Copula):
         else:
             vals = np.zeros(samples.shape[0])
             gtz = np.all(samples > 0.0, axis=1)
-            vals[gtz] = np.maximum(samples[gtz, 1]**(-1 - self.theta)
-                                   * (samples[gtz, 0]**(-self.theta)
-                                      + samples[gtz, 1]**(-self.theta) - 1)
-                                   ** (-1 - 1 / self.theta), 0)
+            vals[gtz] = np.exp(-(1 + 1 / self.theta)
+                               * (self.__loggen(samples[gtz, :])
+                                  + self.theta * np.log(samples[gtz, 1])))
         return vals
 
     def _ppcf(self, samples):
@@ -630,11 +652,14 @@ class ClaytonCopula(Copula):
         else:
             vals = np.zeros(samples.shape[0])
             gtz = np.all(samples > 0.0, axis=1)
-            vals[gtz] = (1 - samples[gtz, 1]**(-self.theta)
-                         + (samples[gtz, 0]
-                            * (samples[gtz, 1]**(1 + self.theta)))
-                         ** (-self.theta / (1 + self.theta))) \
-                ** (-1 / self.theta)
+            logu = np.log(samples[gtz, 0])
+            logv = np.log(samples[gtz, 1])
+            with np.errstate(divide='ignore', over='ignore'):
+                logt = np.logaddexp(0.0,
+                                    -self.theta * logv
+                                    + np.log(np.expm1(-self.theta * logu
+                                                      / (1 + self.theta))))
+            vals[gtz] = np.exp(-logt / self.theta)
         return vals
 
     @classmethod
@@ -682,8 +707,9 @@ class FrankCopula(Copula):
             with np.errstate(divide='ignore'):
                 vals = np.log(-np.log1p(np.expm1(-self.theta * samples[:, 0])
                                         * np.expm1(-self.theta * samples[:, 1])
-                                        / (np.expm1(-self.theta)))) \
-                    - np.log(self.theta)
+                                        / (np.expm1(-self.theta)))
+                              / self.theta)
+            vals = np.minimum(vals, 0)
         return vals
 
     def _ccdf(self, samples):
@@ -695,6 +721,7 @@ class FrankCopula(Copula):
                 / (np.expm1(-self.theta)
                    + np.expm1(-self.theta * samples[:, 0])
                    * np.expm1(-self.theta * samples[:, 1]))
+            vals = np.clip(vals, 0, 1)
         return vals
 
     def _ppcf(self, samples):
@@ -706,6 +733,7 @@ class FrankCopula(Copula):
                                 - samples[:, 0] * np.expm1(-self.theta
                                                            * samples[:, 1]))) \
                 / self.theta
+            vals = np.clip(vals, 0, 1)
         return vals
 
     @classmethod
