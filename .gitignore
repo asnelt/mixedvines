@@ -1,4 +1,4 @@
-# Copyright (C) 2017, 2022 Arno Onken
+# Copyright (C) 2017-2026 Arno Onken
 #
 # This file is part of the mixedvines package.
 #
@@ -14,8 +14,11 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 __pycache__/
-*.pyc
+*.egg-info/
+build/
+dist/
+docs/_build/
+.env/
+.venv/
+.pytest_cache/
 *.swp
-/dist/
-/.env/
-/.pytest_cache/
