@@ -549,7 +549,7 @@ class GaussianCopula(Copula):
         upper = norm.ppf(samples)
         cov = [[1.0, self.theta], [self.theta, 1.0]]
         with np.errstate(divide='ignore'):
-            vals = multivariate_normal.logcdf(upper, None, cov)
+            vals = np.atleast_1d(multivariate_normal.logcdf(upper, None, cov))
         vals[np.any(samples == 0.0, axis=1)] = -np.inf
         vals[samples[:, 0] == 1.0] = np.log(samples[samples[:, 0] == 1.0, 1])
         vals[samples[:, 1] == 1.0] = np.log(samples[samples[:, 1] == 1.0, 0])
