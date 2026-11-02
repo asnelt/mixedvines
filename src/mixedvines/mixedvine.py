@@ -267,7 +267,7 @@ class MixedVine:
                 """Calculates the cost of a set of copula parameters."""
                 vine.root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
-                return -np.sum(vals)
+                return -np.sum(vals[np.isfinite(vals)])
 
             result = minimize(cost, initial_point, method='SLSQP',
                               bounds=bnds)
@@ -488,6 +488,8 @@ class _VineLayer:
                 cdfm[:, k] = marginal.cdf(samples[:, k] - 1)
                 with np.errstate(divide='ignore'):
                     logp[:, k] = np.log(np.maximum(0, cdfp[:, k] - cdfm[:, k]))
+        cdfp = np.clip(cdfp, np.finfo(float).eps, 1 - np.finfo(float).eps)
+        cdfm = np.clip(cdfm, np.finfo(float).eps, 1 - np.finfo(float).eps)
         return {'logpdf': logp[:, self.output_layer.input_indices[0][0]],
                 'logp': logp, 'cdfp': cdfp, 'cdfm': cdfm,
                 'is_continuous': self.is_continuous()}
