@@ -258,20 +258,27 @@ class MixedVine:
             element_order = MixedVine._heuristic_element_order(samples)
             vine.root = MixedVine._construct_c_vine(element_order)
         vine.root.fit(samples, is_continuous, trunc_level)
-        if do_refine:
+        initial_params = vine.root.get_all_params()
+        if do_refine and initial_params:
             # Refine copula parameters
-            initial_point = vine.root.get_all_params()
+            initial_params = np.array(initial_params, dtype=float)
             bnds = vine.root.get_all_bounds()
+            penalty = np.log(np.finfo(float).tiny)
 
             def cost(params):
                 """Calculates the cost of a set of copula parameters."""
                 vine.root.set_all_params(params.tolist())
                 vals = vine.logpdf(samples)
-                return -np.sum(vals[np.isfinite(vals)])
+                return -np.sum(np.where(np.isfinite(vals), vals, penalty))
 
-            result = minimize(cost, initial_point, method='SLSQP',
+            initial_cost = cost(initial_params)
+            result = minimize(cost, initial_params, method='SLSQP',
                               bounds=bnds)
-            vine.root.set_all_params(result.x.tolist())
+            if np.all(np.isfinite(result.x)) \
+                    and cost(result.x) <= initial_cost:
+                vine.root.set_all_params(result.x.tolist())
+            else:
+                vine.root.set_all_params(initial_params.tolist())
         return vine
 
     def _get_marginal_layer(self):
